@@ -39,7 +39,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _continue() {
-    context.go('/shows');
+    context.go(_signup ? '/import' : '/shows');
   }
 
   @override

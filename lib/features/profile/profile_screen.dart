@@ -13,6 +13,7 @@ import 'package:watchers/features/profile/widgets/profile_stats.dart';
 import 'package:watchers/features/profile/widgets/profile_status.dart';
 import 'package:watchers/features/profile/widgets/shows_section.dart';
 import 'package:watchers/features/profile/widgets/watchlist_section.dart';
+import 'package:watchers/features/import/imported_stats_store.dart';
 import 'package:watchers/shared/widgets/watcher_status_bar.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -103,7 +104,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.only(bottom: AppConstants.bottomNavOffset),
       children: [
         ProfileCover(onSettings: () => context.push('/profile/settings')),
-        ProfileStats(movies: movies, shows: shows, comments: comments),
+        ListenableBuilder(
+          listenable: ImportedStatsStore.instance,
+          builder: (context, _) => ProfileStats(
+            movies: movies,
+            shows: shows,
+            comments: comments,
+            importedStats: ImportedStatsStore.instance.stats,
+          ),
+        ),
         WatchlistSection(
           movies: watchlistMovies,
           shows: watchlistShows,

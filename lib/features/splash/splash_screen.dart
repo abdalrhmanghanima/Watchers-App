@@ -152,9 +152,12 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GradientButton(
-                          label: 'Get Started',
-                          onPressed: () => context.go('/auth'),
+                        SizedBox(
+                          width: double.infinity,
+                          child: GradientButton(
+                            label: 'Get Started',
+                            onPressed: () => context.go('/auth'),
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(

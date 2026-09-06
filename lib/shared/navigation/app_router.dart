@@ -18,6 +18,8 @@ import '../../features/shows/episodes_screen.dart';
 import '../../features/shows/show_detail_screen.dart';
 import '../../features/shows/shows_screen.dart';
 import '../../features/splash/splash_screen.dart';
+import '../../features/import/import_ready_screen.dart';
+import '../../features/import/import_screen.dart';
 import '../../data/models/search_result.dart';
 
 abstract final class AppRouter {
@@ -38,6 +40,11 @@ abstract final class AppRouter {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
+      GoRoute(path: '/import', builder: (context, state) => const ImportScreen()),
+      GoRoute(
+        path: '/import/success',
+        builder: (context, state) => const ImportReadyScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             MainShell(navigationShell: navigationShell),

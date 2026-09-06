@@ -30,23 +30,27 @@ class GradientButton extends StatelessWidget {
         ),
         child: InkWell(
           onTap: onPressed,
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 16, color: Colors.white),
-                  const SizedBox(width: 8),
-                ],
-                Text(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: Colors.white),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Text(
                   label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: AppTextStyles.body(
                     15,
                     weight: FontWeight.w600,
                   ).copyWith(color: Colors.white),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
