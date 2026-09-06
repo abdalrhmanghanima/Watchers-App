@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+    <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#09051A"/>
+            <stop offset="1" stop-color="#12052D"/>
+        </linearGradient>
+        <linearGradient id="p" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#E3B7FF"/>
+            <stop offset=".4" stop-color="#9B4DFF"/>
+            <stop offset=".75" stop-color="#5B20F2"/>
+            <stop offset="1" stop-color="#B15CFF"/>
+        </linearGradient>
+        <filter id="g" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="18" result="b"/>
+            <feMerge>
+                <feMergeNode in="b"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+
+    <rect width="1024" height="1024" rx="190" fill="url(#bg)"/>
+
+    <rect x="76" y="76" width="872" height="872" rx="170"
+        fill="none" stroke="#7C2CFF" stroke-width="10" opacity=".75" filter="url(#g)"/>
+
+    <rect x="76" y="76" width="872" height="872" rx="170"
+        fill="none" stroke="#A75BFF" stroke-width="4"/>
+
+    <!-- Centered W mark -->
+    <g transform="translate(-58 0)">
+        <path d="M184 285C180 270 192 254 210 254H335C356 254 374 268 381 288L456 516L535 338C548 309 572 291 600 291C628 291 651 309 664 338L745 541L818 281C824 259 842 244 865 244H934C950 244 960 260 955 275L875 676C867 716 834 745 794 745H750C717 745 687 725 675 694L600 505L525 694C513 725 483 745 450 745H406C366 745 333 716 325 676Z"
+            fill="url(#p)"/>
+
+        <g fill="#100720">
+            <rect x="827" y="285" width="70" height="54" rx="12" transform="rotate(-8 862 312)"/>
+            <rect x="810" y="390" width="70" height="54" rx="12" transform="rotate(-8 845 417)"/>
+            <rect x="790" y="496" width="70" height="54" rx="12" transform="rotate(-8 825 523)"/>
+            <rect x="770" y="602" width="70" height="54" rx="12" transform="rotate(-8 805 629)"/>
+        </g>
+
+        <path d="M211 271H327C339 271 349 279 353 291L427 516"
+            fill="none" stroke="#F0D8FF" stroke-width="10" opacity=".55" stroke-linecap="round"/>
+
+        <path d="M617 344C624 330 635 324 648 322"
+            fill="none" stroke="#F0D8FF" stroke-width="9" opacity=".55" stroke-linecap="round"/>
+    </g>
+</svg>
