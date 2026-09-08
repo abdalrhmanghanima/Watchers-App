@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/auth_screen.dart';
+import '../../data/models/search_result.dart';
+import '../../features/auth/domain/entities/auth_user.dart';
+import '../../features/auth/presentation/providers/auth_controller.dart';
+import '../../features/auth/presentation/screens/auth_screen.dart';
 import '../../features/comments/comments_screen.dart';
+import '../../features/import/import_ready_screen.dart';
+import '../../features/import/import_screen.dart';
 import '../../features/main_shell/main_shell.dart';
 import '../../features/movies/movie_detail_screen.dart';
 import '../../features/movies/movie_list_screen.dart';
@@ -18,29 +24,45 @@ import '../../features/shows/episodes_screen.dart';
 import '../../features/shows/show_detail_screen.dart';
 import '../../features/shows/shows_screen.dart';
 import '../../features/splash/splash_screen.dart';
-import '../../features/import/import_ready_screen.dart';
-import '../../features/import/import_screen.dart';
-import '../../data/models/search_result.dart';
 
-abstract final class AppRouter {
-  static final GlobalKey<NavigatorState> _rootNavigatorKey =
-      GlobalKey<NavigatorState>();
-  static final GlobalKey<NavigatorState> _showsNavigatorKey =
-      GlobalKey<NavigatorState>();
-  static final GlobalKey<NavigatorState> _moviesNavigatorKey =
-      GlobalKey<NavigatorState>();
-  static final GlobalKey<NavigatorState> _searchNavigatorKey =
-      GlobalKey<NavigatorState>();
-  static final GlobalKey<NavigatorState> _profileNavigatorKey =
-      GlobalKey<NavigatorState>();
+final routerProvider = Provider<GoRouter>((ref) {
+  final authNotifier = ValueNotifier<AsyncValue<AuthUser?>>(
+    ref.read(authControllerProvider),
+  );
+  ref.listen<AsyncValue<AuthUser?>>(authControllerProvider, (_, next) {
+    authNotifier.value = next;
+  });
+  ref.onDispose(authNotifier.dispose);
 
-  static final GoRouter instance = GoRouter(
-    navigatorKey: _rootNavigatorKey,
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
+  final showsNavigatorKey = GlobalKey<NavigatorState>();
+  final moviesNavigatorKey = GlobalKey<NavigatorState>();
+  final searchNavigatorKey = GlobalKey<NavigatorState>();
+  final profileNavigatorKey = GlobalKey<NavigatorState>();
+
+  return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
+    refreshListenable: authNotifier,
+    redirect: (context, state) {
+      final auth = authNotifier.value;
+      if (!auth.hasValue || auth.isLoading) return null;
+      final authenticated = auth.value != null;
+      final location = state.uri.path;
+      if (authenticated) {
+        if (location == '/') return '/shows';
+        return null;
+      }
+      if (location == '/' || location == '/auth') return null;
+      return '/auth';
+    },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
-      GoRoute(path: '/import', builder: (context, state) => const ImportScreen()),
+      GoRoute(
+        path: '/import',
+        builder: (context, state) => const ImportScreen(),
+      ),
       GoRoute(
         path: '/import/success',
         builder: (context, state) => const ImportReadyScreen(),
@@ -50,7 +72,7 @@ abstract final class AppRouter {
             MainShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
-            navigatorKey: _showsNavigatorKey,
+            navigatorKey: showsNavigatorKey,
             routes: [
               GoRoute(
                 path: '/shows',
@@ -109,7 +131,7 @@ abstract final class AppRouter {
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: _moviesNavigatorKey,
+            navigatorKey: moviesNavigatorKey,
             routes: [
               GoRoute(
                 path: '/movies',
@@ -144,7 +166,7 @@ abstract final class AppRouter {
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: _searchNavigatorKey,
+            navigatorKey: searchNavigatorKey,
             routes: [
               GoRoute(
                 path: '/search',
@@ -153,7 +175,7 @@ abstract final class AppRouter {
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: _profileNavigatorKey,
+            navigatorKey: profileNavigatorKey,
             routes: [
               GoRoute(
                 path: '/profile',
@@ -183,4 +205,4 @@ abstract final class AppRouter {
       ),
     ],
   );
-}
+});

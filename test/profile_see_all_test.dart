@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:watchers/app/watchers_app.dart';
 import 'package:watchers/core/theme/app_theme.dart';
 import 'package:watchers/features/profile/watched_movies_screen.dart';
 import 'package:watchers/features/profile/watched_shows_screen.dart';
 import 'package:watchers/features/profile/watchlist_screen.dart';
-import 'package:watchers/shared/navigation/app_router.dart';
-import 'package:watchers/shared/widgets/gradient_button.dart';
+
+import 'helpers/auth_test_harness.dart';
 
 void _setTallViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(800, 1400);
@@ -17,17 +16,8 @@ void _setTallViewport(WidgetTester tester) {
 
 Future<void> _goToProfile(WidgetTester tester) async {
   _setTallViewport(tester);
-  AppRouter.instance.go('/');
-  await tester.pumpWidget(const WatchersApp());
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Get Started'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).at(0), 'watcher@watchers.app');
-  await tester.enterText(find.byType(TextField).at(1), 'watchers');
-  await tester.tap(find.widgetWithText(GradientButton, 'Sign In'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('PROFILE'));
-  await tester.pumpAndSettle();
+  final container = await pumpApp(tester);
+  await goToProfile(tester, container);
 }
 
 Future<void> _scrollItemClearOfNavBar(
@@ -69,7 +59,6 @@ void main() {
       await tester.tap(find.text('See all').first);
       await tester.pumpAndSettle();
 
-      // Default tab is Movies
       expect(find.text('Hollow City'), findsOneWidget);
       expect(find.text('Patterns'), findsOneWidget);
       expect(find.text('Aether'), findsOneWidget);
@@ -83,7 +72,6 @@ void main() {
       await tester.tap(find.text('See all').first);
       await tester.pumpAndSettle();
 
-      // Switch to Shows tab
       await tester.tap(find.text('Shows').last);
       await tester.pumpAndSettle();
 
@@ -133,15 +121,12 @@ void main() {
       await tester.tap(find.text('See all').first);
       await tester.pumpAndSettle();
 
-      // Movies tab - shows movies
       expect(find.text('Hollow City'), findsOneWidget);
       expect(find.text('Night Protocol'), findsNothing);
 
-      // Switch to Shows
       await tester.tap(find.text('Shows').last);
       await tester.pumpAndSettle();
 
-      // Shows tab - shows shows
       expect(find.text('Night Protocol'), findsOneWidget);
       expect(find.text('Hollow City'), findsNothing);
     });

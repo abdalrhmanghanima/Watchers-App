@@ -1,27 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_gradients.dart';
-import '../../core/theme/app_text_styles.dart';
-import '../../shared/widgets/gradient_button.dart';
-import '../../shared/widgets/outline_button.dart';
-import '../../shared/widgets/watchers_logo.dart';
-import 'widgets/auth_divider.dart';
-import 'widgets/auth_field.dart';
-import 'widgets/auth_mode_toggle.dart';
-import 'widgets/auth_password_field.dart';
+import '../../../../core/responsive/responsive.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../shared/widgets/gradient_button.dart';
+import '../../../../shared/widgets/outline_button.dart';
+import '../../../../shared/widgets/watchers_logo.dart';
+import '../../domain/errors/auth_exception.dart';
+import '../providers/auth_controller.dart';
+import '../widgets/auth_divider.dart';
+import '../widgets/auth_field.dart';
+import '../widgets/auth_mode_toggle.dart';
+import '../widgets/auth_password_field.dart';
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _signup = false;
   bool _obscure = true;
+  bool _submitting = false;
+  String? _formError;
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final TextEditingController _name = TextEditingController();
@@ -38,8 +44,73 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  void _continue() {
-    context.go(_signup ? '/import' : '/shows');
+  bool _validate() {
+    if (_signup && _name.text.trim().isEmpty) {
+      setState(() => _formError = 'Enter your full name.');
+      return false;
+    }
+    if (_email.text.trim().isEmpty) {
+      setState(() => _formError = 'Enter your email address.');
+      return false;
+    }
+    if (!_email.text.contains('@')) {
+      setState(() => _formError = 'Enter a valid email address.');
+      return false;
+    }
+    if (_password.text.isEmpty) {
+      setState(() => _formError = 'Enter your password.');
+      return false;
+    }
+    setState(() => _formError = null);
+    return true;
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+    if (!_validate()) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _submitting = true);
+    final controller = ref.read(authControllerProvider.notifier);
+    final success = _signup
+        ? await controller.signUp(
+            displayName: _name.text,
+            email: _email.text,
+            password: _password.text,
+          )
+        : await controller.signIn(_email.text, _password.text);
+    if (!mounted) return;
+    if (success) {
+      context.go(_signup ? '/import' : '/shows');
+      return;
+    }
+    setState(() {
+      _submitting = false;
+      final error = ref.read(authControllerProvider).error;
+      _formError = error is AuthException
+          ? error.message
+          : 'Something went wrong. Please try again.';
+    });
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_submitting) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _submitting = true);
+    final controller = ref.read(authControllerProvider.notifier);
+    final success = await controller.signInWithGoogle();
+    if (!mounted) return;
+    if (success) {
+      context.go('/shows');
+      return;
+    }
+    setState(() {
+      _submitting = false;
+      final error = ref.read(authControllerProvider).error;
+      if (error is AuthException && error.cancelled) return;
+      _formError = error is AuthException
+          ? error.message
+          : 'Something went wrong. Please try again.';
+    });
   }
 
   @override
@@ -137,10 +208,35 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ),
                       const SizedBox(height: 24),
-                      GradientButton(
-                        label: _signup ? 'Create Account' : 'Sign In',
-                        onPressed: _continue,
-                      ),
+                      if (_submitting)
+                        SizedBox(
+                          height: context.sizes.buttonHeight,
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: palette.accentBright,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        GradientButton(
+                          label: _signup ? 'Create Account' : 'Sign In',
+                          onPressed: _submit,
+                        ),
+                      if (_formError != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _formError!,
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       Row(
                         children: [
@@ -158,24 +254,10 @@ class _AuthScreenState extends State<AuthScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlineButton(
-                              icon: Icons.g_mobiledata,
-                              label: 'Google',
-                              onPressed: _continue,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlineButton(
-                              icon: Icons.apple,
-                              label: 'Apple',
-                              onPressed: _continue,
-                            ),
-                          ),
-                        ],
+                      OutlineButton(
+                        icon: Icons.g_mobiledata,
+                        label: 'Google',
+                        onPressed: _handleGoogleSignIn,
                       ),
                       const SizedBox(height: 40),
                       Row(

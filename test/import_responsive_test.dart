@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:watchers/core/theme/app_theme.dart';
@@ -35,7 +36,7 @@ void main() {
   tearDown(() => ImportedStatsStore.instance.clear());
 
   Widget wrap(Widget child) =>
-      MaterialApp(theme: AppTheme.dark(), home: child);
+      ProviderScope(child: MaterialApp(theme: AppTheme.dark(), home: child));
 
   Future<void> pumpSized(WidgetTester tester, Size size, Widget child) async {
     tester.view.physicalSize = size;

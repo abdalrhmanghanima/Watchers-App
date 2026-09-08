@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:watchers/app/watchers_app.dart';
 import 'package:watchers/core/theme/app_theme.dart';
 import 'package:watchers/core/theme/theme_controller.dart';
+import 'package:watchers/features/auth/domain/entities/auth_user.dart';
+import 'package:watchers/features/profile/presentation/providers/profile_controller.dart';
 import 'package:watchers/features/profile/settings_screen.dart';
-import 'package:watchers/shared/navigation/app_router.dart';
-import 'package:watchers/shared/widgets/gradient_button.dart';
 import 'package:watchers/shared/widgets/setting_row.dart';
 import 'package:watchers/shared/widgets/watcher_toggle.dart';
 
-Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.dark(), home: child);
+import 'helpers/auth_test_harness.dart';
 
-Future<void> _goToShell(WidgetTester tester) async {
-  AppRouter.instance.go('/');
-  await tester.pumpWidget(const WatchersApp());
+const _signedInUser = AuthUser(
+  uid: 'u1',
+  email: 'celestial@example.com',
+  displayName: 'celestialwatcher',
+);
+
+Future<ProviderContainer> _pumpSettings(
+  WidgetTester tester, {
+  AuthUser? initialUser,
+}) async {
+  final container = createTestContainer(initialUser: initialUser);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(theme: AppTheme.dark(), home: const SettingsScreen()),
+    ),
+  );
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Get Started'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).at(0), 'watcher@watchers.app');
-  await tester.enterText(find.byType(TextField).at(1), 'watchers');
-  await tester.tap(find.widgetWithText(GradientButton, 'Sign In'));
-  await tester.pumpAndSettle();
+  return container;
 }
 
 void main() {
@@ -51,8 +60,7 @@ void main() {
     WidgetTester tester,
   ) async {
     setTallViewport(tester);
-    await tester.pumpWidget(_wrap(const SettingsScreen()));
-    await tester.pumpAndSettle();
+    await _pumpSettings(tester, initialUser: _signedInUser);
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('celestialwatcher'), findsOneWidget);
@@ -87,11 +95,32 @@ void main() {
     expect(find.text('Sign Out'), findsOneWidget);
   });
 
+  testWidgets('Edit name updates the display name on the profile card', (
+    WidgetTester tester,
+  ) async {
+    setTallViewport(tester);
+    final container = await _pumpSettings(tester, initialUser: _signedInUser);
+
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit name'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Nova Lee');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nova Lee'), findsOneWidget);
+    expect(find.text('celestialwatcher'), findsNothing);
+    expect(
+      container.read(profileControllerProvider).value?.displayName,
+      'Nova Lee',
+    );
+  });
+
   testWidgets('appearance toggle flips the app theme', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(_wrap(const SettingsScreen()));
-    await tester.pumpAndSettle();
+    await _pumpSettings(tester);
 
     expect(ThemeController.instance.isDark, isTrue);
     expect(find.text('Dark mode'), findsOneWidget);
@@ -124,8 +153,7 @@ void main() {
     WidgetTester tester,
   ) async {
     setTallViewport(tester);
-    await tester.pumpWidget(_wrap(const SettingsScreen()));
-    await tester.pumpAndSettle();
+    await _pumpSettings(tester);
 
     expect(toggleOf('New Episodes').value, isTrue);
     await tester.tap(
@@ -162,9 +190,8 @@ void main() {
     WidgetTester tester,
   ) async {
     setTallViewport(tester);
-    await _goToShell(tester);
-    await tester.tap(find.text('PROFILE'));
-    await tester.pumpAndSettle();
+    final container = await pumpApp(tester);
+    await goToProfile(tester, container);
 
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
@@ -177,9 +204,9 @@ void main() {
   testWidgets('back from Settings returns to the profile screen', (
     WidgetTester tester,
   ) async {
-    await _goToShell(tester);
-    await tester.tap(find.text('PROFILE'));
-    await tester.pumpAndSettle();
+    setTallViewport(tester);
+    final container = await pumpApp(tester);
+    await goToProfile(tester, container);
 
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
@@ -188,6 +215,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('celestialwatcher'), findsOneWidget);
+    expect(find.text('Settings'), findsNothing);
+  });
+
+  testWidgets('Sign Out returns to the auth screen', (
+    WidgetTester tester,
+  ) async {
+    setTallViewport(tester);
+    final container = await pumpApp(tester);
+    await goToProfile(tester, container);
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Sign Out'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign Out'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Email address'), findsOneWidget);
+    expect(find.text('Settings'), findsNothing);
+  });
+
+  testWidgets('Delete Account requires confirmation and signs out', (
+    WidgetTester tester,
+  ) async {
+    setTallViewport(tester);
+    final container = await pumpApp(tester);
+    await goToProfile(tester, container);
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Delete Account'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete Account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete account?'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).last, 'watchers');
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Email address'), findsOneWidget);
     expect(find.text('Settings'), findsNothing);
   });
 }

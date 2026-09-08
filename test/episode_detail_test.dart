@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:watchers/app/watchers_app.dart';
 import 'package:watchers/core/theme/app_theme.dart';
 import 'package:watchers/data/sources/mock_content_repository.dart';
 import 'package:watchers/features/shows/episode_detail/episode_detail_screen.dart';
@@ -9,7 +9,8 @@ import 'package:watchers/features/shows/episode_detail/widgets/episode_detail_he
 import 'package:watchers/features/shows/episode_detail/widgets/episode_navigation_row.dart';
 import 'package:watchers/features/shows/episode_detail/widgets/episode_show_bar.dart';
 import 'package:watchers/shared/navigation/app_router.dart';
-import 'package:watchers/shared/widgets/gradient_button.dart';
+
+import 'helpers/auth_test_harness.dart';
 
 Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.dark(), home: child);
 
@@ -34,16 +35,10 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
-Future<void> _goToShell(WidgetTester tester) async {
-  AppRouter.instance.go('/');
-  await tester.pumpWidget(const WatchersApp());
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Get Started'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).at(0), 'watcher@watchers.app');
-  await tester.enterText(find.byType(TextField).at(1), 'watchers');
-  await tester.tap(find.widgetWithText(GradientButton, 'Sign In'));
-  await tester.pumpAndSettle();
+Future<ProviderContainer> _goToShell(WidgetTester tester) async {
+  final container = await pumpApp(tester);
+  await goToShell(tester, container);
+  return container;
 }
 
 void main() {
@@ -232,9 +227,9 @@ void main() {
   testWidgets('Show Details still keeps Add to Watchlist and seasons', (
     tester,
   ) async {
-    await _goToShell(tester);
+    final container = await _goToShell(tester);
 
-    AppRouter.instance.go('/shows/detail/the-agency');
+    container.read(routerProvider).go('/shows/detail/the-agency');
     await tester.pumpAndSettle();
 
     expect(find.text('About'), findsOneWidget);

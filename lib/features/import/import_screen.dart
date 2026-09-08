@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -6,48 +7,25 @@ import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../data/repositories/imported_stats_repository.dart';
 import '../../shared/widgets/gradient_button.dart';
 import '../../shared/widgets/outline_button.dart';
 import '../../shared/widgets/watchers_logo.dart';
+import 'import_controller.dart';
 import 'imported_stats_store.dart';
 
-class ImportScreen extends StatefulWidget {
-  const ImportScreen({super.key, this.repository});
-
-  final ImportedStatsRepository? repository;
+class ImportScreen extends ConsumerStatefulWidget {
+  const ImportScreen({super.key});
 
   @override
-  State<ImportScreen> createState() => _ImportScreenState();
+  ConsumerState<ImportScreen> createState() => _ImportScreenState();
 }
 
-class _ImportScreenState extends State<ImportScreen> {
-  late final ImportedStatsRepository _repository;
-  bool _importing = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _repository = widget.repository ?? LocalDatasetImportRepository();
-  }
-
+class _ImportScreenState extends ConsumerState<ImportScreen> {
   Future<void> _import() async {
-    setState(() {
-      _importing = true;
-      _error = null;
-    });
-    try {
-      final stats = await _repository.importStats();
-      ImportedStatsStore.instance.handleImport(stats);
-      if (!mounted) return;
+    final success = await ref.read(importControllerProvider.notifier).import();
+    if (!mounted) return;
+    if (success) {
       context.go('/import/success');
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _importing = false;
-        _error = 'Could not import your data. Please try again.';
-      });
     }
   }
 
@@ -58,6 +36,11 @@ class _ImportScreenState extends State<ImportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final importState = ref.watch(importControllerProvider);
+    final importing = importState.isLoading;
+    final error = importState.hasError
+        ? 'Could not import your data. Please try again.'
+        : null;
     final palette = WatchersPalette.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
@@ -126,9 +109,9 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      _DatasetCard(),
+                      const _DatasetCard(),
                       const SizedBox(height: 24),
-                      if (_importing)
+                      if (importing)
                         SizedBox(
                           height: context.sizes.buttonHeight,
                           child: Center(
@@ -151,12 +134,12 @@ class _ImportScreenState extends State<ImportScreen> {
                       const SizedBox(height: 12),
                       OutlineButton(
                         label: 'Skip for now',
-                        onPressed: _importing ? null : _skip,
+                        onPressed: importing ? null : _skip,
                       ),
-                      if (_error != null) ...[
+                      if (error != null) ...[
                         const SizedBox(height: 16),
                         Text(
-                          _error!,
+                          error,
                           textAlign: TextAlign.center,
                           style: AppTextStyles.caption.copyWith(
                             color: AppColors.danger,
@@ -184,6 +167,8 @@ class _ImportScreenState extends State<ImportScreen> {
 }
 
 class _DatasetCard extends StatelessWidget {
+  const _DatasetCard();
+
   @override
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);

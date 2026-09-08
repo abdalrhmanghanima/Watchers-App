@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "644979786548",
+    "project_id": "watchers-app-2026-4fd13",
+    "storage_bucket": "watchers-app-2026-4fd13.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:644979786548:android:fbeab10bb64f92dec61b61",
+        "android_client_info": {
+          "package_name": "com.example.watchers"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "644979786548-16g09dn0coa7605icao3nam1nmb30dkr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.watchers",
+            "certificate_hash": "ca07c44917b5d9ad6ea4669d55fc8b5a10cd747b"
+          }
+        },
+        {
+          "client_id": "644979786548-r1h9tp31k8mor5o3dsme89gbhu8ihdhg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDjhg-6vrVrCbiA26yvUa5KBHATfkS_2M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "644979786548-r1h9tp31k8mor5o3dsme89gbhu8ihdhg.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "644979786548-sek2vkr83f49ibihhpenvck87qcageln.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.watchers"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

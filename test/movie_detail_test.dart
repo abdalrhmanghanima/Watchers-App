@@ -1,26 +1,21 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:watchers/app/watchers_app.dart';
 import 'package:watchers/shared/navigation/app_router.dart';
-import 'package:watchers/shared/widgets/gradient_button.dart';
 
-Future<void> _goToShell(WidgetTester tester) async {
-  AppRouter.instance.go('/');
-  await tester.pumpWidget(const WatchersApp());
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Get Started'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).at(0), 'watcher@watchers.app');
-  await tester.enterText(find.byType(TextField).at(1), 'watchers');
-  await tester.tap(find.widgetWithText(GradientButton, 'Sign In'));
-  await tester.pumpAndSettle();
+import 'helpers/auth_test_harness.dart';
+
+Future<ProviderContainer> _goToShell(WidgetTester tester) async {
+  final container = await pumpApp(tester);
+  await goToShell(tester, container);
+  return container;
 }
 
-Future<void> _goToMovies(WidgetTester tester) async {
-  await _goToShell(tester);
+Future<ProviderContainer> _goToMovies(WidgetTester tester) async {
+  final container = await _goToShell(tester);
   await tester.tap(find.text('MOVIES'));
   await tester.pumpAndSettle();
+  return container;
 }
 
 void main() {
@@ -61,9 +56,9 @@ void main() {
   testWidgets('an unknown movie id renders the movie-not-found state', (
     WidgetTester tester,
   ) async {
-    await _goToMovies(tester);
+    final container = await _goToMovies(tester);
 
-    AppRouter.instance.go('/movies/detail/unknown');
+    container.read(routerProvider).go('/movies/detail/unknown');
     await tester.pumpAndSettle();
 
     expect(find.text('Movie not found'), findsOneWidget);

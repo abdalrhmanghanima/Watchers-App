@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:watchers/app/watchers_app.dart';
 import 'package:watchers/features/profile/widgets/profile_section_title.dart';
 import 'package:watchers/features/profile/widgets/profile_stats_card.dart';
-import 'package:watchers/shared/navigation/app_router.dart';
-import 'package:watchers/shared/widgets/gradient_button.dart';
 import 'package:watchers/shared/widgets/profile_avatar.dart';
+
+import 'helpers/auth_test_harness.dart';
 
 void _setTallViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(800, 1400);
@@ -14,19 +14,11 @@ void _setTallViewport(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
-Future<void> _goToProfile(WidgetTester tester) async {
+Future<ProviderContainer> _goToProfile(WidgetTester tester) async {
   _setTallViewport(tester);
-  AppRouter.instance.go('/');
-  await tester.pumpWidget(const WatchersApp());
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Get Started'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).at(0), 'watcher@watchers.app');
-  await tester.enterText(find.byType(TextField).at(1), 'watchers');
-  await tester.tap(find.widgetWithText(GradientButton, 'Sign In'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('PROFILE'));
-  await tester.pumpAndSettle();
+  final container = await pumpApp(tester);
+  await goToProfile(tester, container);
+  return container;
 }
 
 Future<void> _scrollItemClearOfNavBar(
@@ -49,7 +41,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     final avatar = find.byType(ProfileAvatar);
     final username = find.text('celestialwatcher');
@@ -68,7 +59,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     final cards = find.byType(ProfileStatsCard);
     expect(cards, findsNWidgets(5));
@@ -83,7 +73,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
@@ -102,7 +91,6 @@ void main() {
 
   testWidgets('four stats are present', (WidgetTester tester) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('TV Shows'), findsWidgets);
     expect(find.text('Movies'), findsWidgets);
@@ -110,14 +98,12 @@ void main() {
 
   testWidgets('TV Shows count is displayed', (WidgetTester tester) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('3'), findsWidgets);
   });
 
   testWidgets('Episodes Time is displayed', (WidgetTester tester) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('Episodes Time'), findsOneWidget);
     expect(find.text('Episodes'), findsNothing);
@@ -125,14 +111,12 @@ void main() {
 
   testWidgets('Movies count is displayed', (WidgetTester tester) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('2'), findsWidgets);
   });
 
   testWidgets('Movies Time is displayed', (WidgetTester tester) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('Movies Time'), findsOneWidget);
     expect(find.text('4h 6m'), findsWidgets);
@@ -140,7 +124,6 @@ void main() {
 
   testWidgets('Comments count is displayed', (WidgetTester tester) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('Comments'), findsOneWidget);
     expect(find.text('6'), findsWidgets);
@@ -150,7 +133,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('Watchlist'), findsOneWidget);
     expect(find.text('See all'), findsWidgets);
@@ -160,7 +142,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.byType(ProfileSectionTitle), findsWidgets);
     expect(find.text('Shows'), findsWidgets);
@@ -170,7 +151,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('Movies'), findsWidgets);
   });
@@ -179,7 +159,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('Shows'), findsWidgets);
     expect(find.text('Movies'), findsWidgets);
@@ -187,7 +166,6 @@ void main() {
 
   testWidgets('All Titles is not present', (WidgetTester tester) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('All Titles'), findsNothing);
   });
@@ -196,7 +174,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
@@ -215,7 +192,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
@@ -234,7 +210,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _goToProfile(tester);
-    await tester.pumpAndSettle();
 
     final scrollable = find.byType(Scrollable).first;
     final title = find.text('The Forgotten Shore').first;

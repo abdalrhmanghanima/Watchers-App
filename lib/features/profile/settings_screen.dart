@@ -1,27 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:watchers/core/theme/app_colors.dart';
 import 'package:watchers/core/theme/theme_controller.dart';
+import 'package:watchers/features/auth/domain/errors/auth_exception.dart';
+import 'package:watchers/features/auth/presentation/providers/auth_controller.dart';
+import 'package:watchers/features/auth/presentation/widgets/delete_account_dialog.dart';
+import 'package:watchers/features/import/imported_stats_store.dart';
 import 'package:watchers/shared/widgets/setting_row.dart';
 import 'package:watchers/shared/widgets/watcher_status_bar.dart';
 import 'package:watchers/shared/widgets/watcher_toggle.dart';
 
+import 'presentation/providers/profile_controller.dart';
+import 'widgets/edit_name_dialog.dart';
 import 'widgets/settings_header.dart';
 import 'widgets/settings_profile_card.dart';
 import 'widgets/settings_section.dart';
 import 'widgets/settings_section_label.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _newEpisodes = true;
   bool _watchlistReminders = false;
   bool _privateProfile = false;
+  bool _signingOut = false;
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    setState(() => _signingOut = true);
+    final success = await ref.read(authControllerProvider.notifier).signOut();
+    ImportedStatsStore.instance.clear();
+    if (!mounted) return;
+    setState(() => _signingOut = false);
+    if (success) {
+      context.go('/auth');
+      return;
+    }
+    final error = ref.read(authControllerProvider).error;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            error is AuthException
+                ? error.message
+                : 'Something went wrong. Please try again.',
+          ),
+        ),
+      );
+  }
+
+  Future<void> _editName() async {
+    final current =
+        ref.read(authControllerProvider).value?.displayName ?? '';
+    final name = await showEditNameDialog(context, currentName: current);
+    if (name == null || !mounted) return;
+    final updated = await ref
+        .read(profileControllerProvider.notifier)
+        .updateDisplayName(name);
+    if (!mounted || updated) return;
+    final message =
+        ref.read(profileErrorProvider) ??
+        'Could not update your display name.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const DeleteAccountDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+    ImportedStatsStore.instance.clear();
+    context.go('/auth');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 return ListView(
                   padding: const EdgeInsets.only(bottom: 40),
                   children: [
-                    const SettingsProfileCard(),
+                    SettingsProfileCard(onEdit: _editName),
                     const SettingsSectionLabel(label: 'Appearance'),
                     SettingsSection(
                       children: [
@@ -167,11 +228,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         SettingRow(
                           danger: true,
                           icon: Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: AppColors.danger,
+                          ),
+                          label: 'Delete Account',
+                          onTap: _confirmDeleteAccount,
+                        ),
+                        SettingRow(
+                          danger: true,
+                          icon: Icon(
                             Icons.logout,
                             size: 16,
                             color: AppColors.danger,
                           ),
                           label: 'Sign Out',
+                          right: _signingOut
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: palette.accent,
+                                  ),
+                                )
+                              : null,
+                          onTap: _signOut,
                         ),
                       ],
                     ),

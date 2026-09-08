@@ -49,6 +49,14 @@ dependencies:
 
   # Persists theme preference, session, and library state.
   shared_preferences: ^2.3.3
+  firebase_core: ^4.14.0
+  firebase_auth: ^6.6.1
+  flutter_riverpod: ^3.4.3
+  google_sign_in: ^7.2.0
+  image_picker: ^1.2.3
+  flutter_image_compress: ^2.5.1
+  firebase_storage: ^13.5.0
+  cloud_firestore: ^6.9.0
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +72,7 @@ dev_dependencies:
   # Generates Android/iOS launcher icons from the Watchers logo:
   # build/icons/watchers_logo.png is rendered from assets/icons/watchers_logo.svg.
   flutter_launcher_icons: ^0.14.4
+  mocktail: ^1.0.5
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:watchers/app/watchers_app.dart';
 import 'package:watchers/shared/navigation/app_router.dart';
 import 'package:watchers/shared/widgets/gradient_button.dart';
 import 'package:watchers/shared/widgets/watchers_logo.dart';
 
+import 'helpers/auth_test_harness.dart';
+
 Future<void> _boot(WidgetTester tester) async {
-  AppRouter.instance.go('/');
-  await tester.pumpWidget(const WatchersApp());
+  final container = await pumpApp(tester);
+  container.read(routerProvider).go('/');
+  await tester.pumpAndSettle();
 }
 
 Future<void> _goToAuth(WidgetTester tester) async {
@@ -30,7 +32,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await _boot(tester);
-    await tester.pumpAndSettle();
 
     expect(find.text('WATCHERS'), findsOneWidget);
     expect(find.text('TRACK WHAT YOU WATCH'), findsOneWidget);
@@ -60,7 +61,6 @@ void main() {
     addTearDown(tester.view.reset);
 
     await _boot(tester);
-    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
 
@@ -81,7 +81,6 @@ void main() {
     expect(find.text('Create Account'), findsWidgets);
     expect(find.text('or continue with'), findsOneWidget);
     expect(find.text('Google'), findsOneWidget);
-    expect(find.text('Apple'), findsOneWidget);
 
     await tester.tap(find.text('Create Account'));
     await tester.pumpAndSettle();

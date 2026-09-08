@@ -1,0 +1,1 @@
+enum ProfileImageType { profilePhoto, coverPhoto }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +9,7 @@ import 'package:watchers/core/theme/app_theme.dart';
 import 'package:watchers/data/models/imported_content.dart';
 import 'package:watchers/data/models/imported_stats.dart';
 import 'package:watchers/data/repositories/imported_stats_repository.dart';
+import 'package:watchers/features/import/import_controller.dart';
 import 'package:watchers/features/import/import_ready_screen.dart';
 import 'package:watchers/features/import/import_screen.dart';
 import 'package:watchers/features/import/imported_stats_store.dart';
@@ -91,7 +93,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/import',
-          builder: (context, state) => ImportScreen(repository: repository),
+          builder: (context, state) => const ImportScreen(),
         ),
         GoRoute(
           path: '/import/success',
@@ -101,7 +103,10 @@ void main() {
       ],
     );
     await tester.pumpWidget(
-      MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
+      ProviderScope(
+        overrides: [importRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
+      ),
     );
     await tester.pumpAndSettle();
   }

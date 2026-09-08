@@ -1,26 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:watchers/app/watchers_app.dart';
 import 'package:watchers/core/theme/app_theme.dart';
 import 'package:watchers/data/models/search_result.dart';
 import 'package:watchers/data/sources/mock_content_repository.dart';
 import 'package:watchers/features/comments/comments_screen.dart';
 import 'package:watchers/shared/navigation/app_router.dart';
-import 'package:watchers/shared/widgets/gradient_button.dart';
+
+import 'helpers/auth_test_harness.dart';
 
 Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.dark(), home: child);
 
-Future<void> _goToShell(WidgetTester tester) async {
-  AppRouter.instance.go('/');
-  await tester.pumpWidget(const WatchersApp());
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Get Started'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).at(0), 'watcher@watchers.app');
-  await tester.enterText(find.byType(TextField).at(1), 'watchers');
-  await tester.tap(find.widgetWithText(GradientButton, 'Sign In'));
-  await tester.pumpAndSettle();
+Future<ProviderContainer> _goToShell(WidgetTester tester) async {
+  final container = await pumpApp(tester);
+  await goToShell(tester, container);
+  return container;
 }
 
 void main() {
@@ -151,9 +146,9 @@ void main() {
   testWidgets('Comments on an episode detail opens the comments screen', (
     WidgetTester tester,
   ) async {
-    await _goToShell(tester);
+    final container = await _goToShell(tester);
 
-    AppRouter.instance.go('/shows/detail/the-agency/episode/1/1');
+    container.read(routerProvider).go('/shows/detail/the-agency/episode/1/1');
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Comments'));
