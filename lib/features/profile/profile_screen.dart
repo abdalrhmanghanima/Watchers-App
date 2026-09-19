@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watchers/core/constants/app_constants.dart';
 import 'package:watchers/core/theme/app_colors.dart';
 import 'package:watchers/data/models/comment.dart';
 import 'package:watchers/data/models/movie.dart';
 import 'package:watchers/data/models/show.dart';
-import 'package:watchers/data/repositories/content_repository.dart';
-import 'package:watchers/data/sources/mock_content_repository.dart';
+import 'package:watchers/data/providers/content_repository_provider.dart';
 import 'package:watchers/features/profile/widgets/movies_section.dart';
 import 'package:watchers/features/profile/widgets/profile_cover.dart';
 import 'package:watchers/features/profile/widgets/profile_stats.dart';
@@ -16,18 +16,14 @@ import 'package:watchers/features/profile/widgets/watchlist_section.dart';
 import 'package:watchers/features/import/imported_stats_store.dart';
 import 'package:watchers/shared/widgets/watcher_status_bar.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.repository});
-
-  final ContentRepository? repository;
+class ProfileScreen extends ConsumerStatefulWidget {
+  const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   late Future<(List<Movie>, List<Show>, List<Comment>)> _future;
 
   @override
@@ -37,9 +33,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<(List<Movie>, List<Show>, List<Comment>)> _load() async {
-    final movies = await _repository.getMovies();
-    final shows = await _repository.getShows();
-    final comments = await _repository.getComments();
+    final repository = ref.read(contentRepositoryProvider);
+    final movies = await repository.getMovies();
+    final shows = await repository.getShows();
+    final comments = await repository.getComments();
     return (movies, shows, comments);
   }
 

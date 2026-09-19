@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/models/movie.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../features/tmdb/presentation/providers/tmdb_detail_ui_providers.dart';
 import '../../shared/widgets/genre_chip.dart';
 import 'widgets/movie_detail_actions.dart';
 import 'widgets/movie_detail_cast.dart';
@@ -15,40 +14,18 @@ import 'widgets/movie_detail_similar_movies.dart';
 import 'widgets/movie_detail_synopsis.dart';
 import 'widgets/movies_status.dart';
 
-class MovieDetailScreen extends StatefulWidget {
-  const MovieDetailScreen({super.key, required this.movieId, this.repository});
+class MovieDetailScreen extends ConsumerStatefulWidget {
+  const MovieDetailScreen({super.key, required this.movieId});
 
   final String movieId;
-  final ContentRepository? repository;
 
   @override
-  State<MovieDetailScreen> createState() => _MovieDetailScreenState();
+  ConsumerState<MovieDetailScreen> createState() => _MovieDetailScreenState();
 }
 
-class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
-  late Future<(Movie?, List<Movie>)> _future;
+class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
   bool? _inWatchlist;
   bool? _watched;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _load();
-  }
-
-  Future<(Movie?, List<Movie>)> _load() async {
-    final movie = await _repository.getMovie(widget.movieId);
-    final movies = await _repository.getMovies();
-    return (movie, movies);
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _load();
-    });
-  }
 
   void _toggleWatchlist() {
     setState(() {
@@ -62,54 +39,58 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     });
   }
 
+  void _reload(int id) {
+    ref.invalidate(movieDetailDataProvider(id));
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);
+    final id = int.tryParse(widget.movieId);
     return Scaffold(
       backgroundColor: palette.bg,
-      body: FutureBuilder<(Movie?, List<Movie>)>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return MoviesStatus(
-              icon: Icons.cloud_off_outlined,
-              title: 'Something went wrong',
-              message:
-                  "We couldn't load this movie. Check your connection and try again.",
-              actionLabel: 'Try again',
-              onAction: _reload,
-            );
-          }
-          final data = snapshot.data;
-          final movie = data?.$1;
-          if (movie == null) {
-            return MoviesStatus(
+      body: id == null
+          ? MoviesStatus(
               icon: Icons.local_movies_outlined,
               title: 'Movie not found',
-              message:
-                  'This movie could not be found. It may have been removed.',
-            );
-          }
-          return _buildContent(movie, data!.$2);
-        },
-      ),
+              message: 'This movie could not be found. It may have been removed.',
+            )
+          : _buildBody(id),
     );
   }
 
-  Widget _buildContent(Movie movie, List<Movie> allMovies) {
+  Widget _buildBody(int id) {
+    final data = ref.watch(movieDetailDataProvider(id));
+    return data.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => MoviesStatus(
+        icon: Icons.cloud_off_outlined,
+        title: 'Something went wrong',
+        message:
+            "We couldn't load this movie. Check your connection and try again.",
+        actionLabel: 'Try again',
+        onAction: () => _reload(id),
+      ),
+      data: (value) {
+        final detail = value;
+        if (detail == null) {
+          return MoviesStatus(
+            icon: Icons.local_movies_outlined,
+            title: 'Movie not found',
+            message:
+                'This movie could not be found. It may have been removed.',
+          );
+        }
+        return _buildContent(detail);
+      },
+    );
+  }
+
+  Widget _buildContent(MovieDetailData detail) {
+    final movie = detail.movie;
     final inWatchlist = _inWatchlist ?? (movie.inWatchlist ?? false);
     final watched = _watched ?? (movie.watched ?? false);
     final sizes = context.sizes;
-    final similar = allMovies
-        .where(
-          (m) =>
-              m.id != movie.id && m.genres.any((g) => movie.genres.contains(g)),
-        )
-        .take(4)
-        .toList();
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -127,7 +108,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final genre in movie.genres) GenreChip(label: genre),
+                  for (final genre in detail.genres) GenreChip(label: genre),
                 ],
               ),
               SizedBox(height: sizes.blockGap),
@@ -140,16 +121,16 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               SizedBox(height: sizes.sectionGap),
               MovieDetailSynopsis(synopsis: movie.synopsis),
               SizedBox(height: sizes.sectionGap),
-              MovieDetailCast(cast: movie.cast),
+              MovieDetailCast(cast: detail.cast),
               SizedBox(height: sizes.sectionGap),
               MovieDetailCommentsButton(
                 onTap: () =>
                     context.push('/movies/detail/${movie.id}/comments'),
               ),
-              if (similar.isNotEmpty) ...[
+              if (detail.similar.isNotEmpty) ...[
                 SizedBox(height: sizes.sectionGap),
                 MovieDetailSimilarMovies(
-                  movies: similar,
+                  movies: detail.similar,
                   onMovieTap: (m) => context.push('/movies/detail/${m.id}'),
                 ),
               ],

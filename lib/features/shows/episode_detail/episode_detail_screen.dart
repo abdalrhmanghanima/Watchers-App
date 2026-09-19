@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/responsive/responsive.dart';
@@ -6,8 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/episode.dart';
 import '../../../data/models/season.dart';
 import '../../../data/models/show.dart';
-import '../../../data/repositories/content_repository.dart';
-import '../../../data/sources/mock_content_repository.dart';
+import '../../../features/tmdb/presentation/providers/show_detail_ui_providers.dart';
 import '../../../shared/widgets/watcher_status_bar.dart';
 import '../widgets/shows_status.dart';
 import 'widgets/episode_detail_page.dart';
@@ -15,28 +15,24 @@ import 'widgets/episode_page_indicator.dart';
 
 typedef _EpisodeEntry = ({Season season, Episode episode});
 
-class EpisodeDetailScreen extends StatefulWidget {
+class EpisodeDetailScreen extends ConsumerStatefulWidget {
   const EpisodeDetailScreen({
     super.key,
     required this.showId,
     required this.season,
     required this.episode,
-    this.repository,
   });
 
   final String showId;
   final int season;
   final int episode;
-  final ContentRepository? repository;
 
   @override
-  State<EpisodeDetailScreen> createState() => _EpisodeDetailScreenState();
+  ConsumerState<EpisodeDetailScreen> createState() =>
+      _EpisodeDetailScreenState();
 }
 
-class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
-  late Future<Show?> _future;
+class _EpisodeDetailScreenState extends ConsumerState<EpisodeDetailScreen> {
   final Map<String, bool> _watchedOverrides = {};
   PageController? _pageController;
   int _entryCount = 0;
@@ -44,24 +40,14 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
   int _currentIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _future = _repository.getShow(widget.showId);
-  }
-
-  @override
   void dispose() {
     _pageController?.dispose();
     super.dispose();
   }
 
-  Future<Show?> _load() => _repository.getShow(widget.showId);
-
-  void _reload() {
+  void _reload(int showId) {
     _initialized = false;
-    setState(() {
-      _future = _load();
-    });
+    ref.invalidate(fullShowWithEpisodesProvider(showId));
   }
 
   List<_EpisodeEntry> _flatten(Show show) {
@@ -124,40 +110,47 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);
+    final showId = int.tryParse(widget.showId);
     return Scaffold(
       backgroundColor: palette.bg,
-      body: FutureBuilder<Show?>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return ShowsStatus(
-              icon: Icons.cloud_off_outlined,
-              title: 'Something went wrong',
-              message:
-                  "We couldn't load this episode. Check your connection and try again.",
-              actionLabel: 'Try again',
-              onAction: _reload,
-            );
-          }
-          final show = snapshot.data;
-          if (show == null) {
-            return ShowsStatus(
+      body: showId == null
+          ? ShowsStatus(
               icon: Icons.live_tv_outlined,
               title: 'Show not found',
               message:
                   'This show could not be found. It may have been removed.',
-            );
-          }
-          return _buildContent(show);
-        },
-      ),
+            )
+          : _buildBody(showId),
     );
   }
 
-  Widget _buildContent(Show show) {
+  Widget _buildBody(int showId) {
+    final showAsync = ref.watch(fullShowWithEpisodesProvider(showId));
+    return showAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => ShowsStatus(
+        icon: Icons.cloud_off_outlined,
+        title: 'Something went wrong',
+        message:
+            "We couldn't load this episode. Check your connection and try again.",
+        actionLabel: 'Try again',
+        onAction: () => _reload(showId),
+      ),
+      data: (show) {
+        if (show == null) {
+          return ShowsStatus(
+            icon: Icons.live_tv_outlined,
+            title: 'Show not found',
+            message:
+                'This show could not be found. It may have been removed.',
+          );
+        }
+        return _buildContent(show, showId);
+      },
+    );
+  }
+
+  Widget _buildContent(Show show, int showId) {
     final entries = _flatten(show);
     if (entries.isEmpty) {
       return const ShowsStatus(
@@ -184,22 +177,34 @@ class _EpisodeDetailScreenState extends State<EpisodeDetailScreen> {
             },
             itemBuilder: (context, index) {
               final entry = entries[index];
-              return EpisodeDetailPage(
-                show: show,
-                season: entry.season,
-                episode: entry.episode,
-                watched: _isWatched(entry.season, entry.episode),
-                onWatch: () => _markWatched(entry.season, entry.episode),
-                onToggleWatched: () =>
-                    _toggleWatched(entry.season, entry.episode),
-                onShowTap: () => _openShow(show),
-                onComments: () => _openComments(show, entry),
-                hasNext: index < entries.length - 1,
-                hasPrevious: index > 0,
-                onNext: index < entries.length - 1
-                    ? () => _goTo(index + 1)
-                    : null,
-                onPrevious: index > 0 ? () => _goTo(index - 1) : null,
+              return Consumer(
+                builder: (context, ref, _) {
+                  final content = ref.watch(
+                    episodeDetailContentProvider((
+                      showId: showId,
+                      seasonNumber: entry.season.number,
+                      episodeNumber: entry.episode.number,
+                    )),
+                  );
+                  final episode = content.value ?? entry.episode;
+                  return EpisodeDetailPage(
+                    show: show,
+                    season: entry.season,
+                    episode: episode,
+                    watched: _isWatched(entry.season, entry.episode),
+                    onWatch: () => _markWatched(entry.season, entry.episode),
+                    onToggleWatched: () =>
+                        _toggleWatched(entry.season, entry.episode),
+                    onShowTap: () => _openShow(show),
+                    onComments: () => _openComments(show, entry),
+                    hasNext: index < entries.length - 1,
+                    hasPrevious: index > 0,
+                    onNext: index < entries.length - 1
+                        ? () => _goTo(index + 1)
+                        : null,
+                    onPrevious: index > 0 ? () => _goTo(index - 1) : null,
+                  );
+                },
               );
             },
           ),

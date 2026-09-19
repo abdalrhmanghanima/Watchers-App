@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:watchers/core/theme/app_colors.dart';
@@ -6,8 +7,7 @@ import 'package:watchers/core/theme/app_text_styles.dart';
 import 'package:watchers/data/models/episode.dart';
 import 'package:watchers/data/models/season.dart';
 import 'package:watchers/data/models/show.dart';
-import 'package:watchers/data/repositories/content_repository.dart';
-import 'package:watchers/data/sources/mock_content_repository.dart';
+import 'package:watchers/features/tmdb/presentation/providers/show_detail_ui_providers.dart';
 import 'package:watchers/shared/widgets/watcher_status_bar.dart';
 
 import 'widgets/episode_card.dart';
@@ -16,40 +16,23 @@ import 'widgets/episodes_progress.dart';
 import 'widgets/episodes_season_tabs.dart';
 import 'widgets/shows_status.dart';
 
-class EpisodesScreen extends StatefulWidget {
+class EpisodesScreen extends ConsumerStatefulWidget {
   const EpisodesScreen({
     super.key,
     required this.showId,
     required this.season,
-    this.repository,
   });
 
   final String showId;
   final int season;
-  final ContentRepository? repository;
 
   @override
-  State<EpisodesScreen> createState() => _EpisodesScreenState();
+  ConsumerState<EpisodesScreen> createState() => _EpisodesScreenState();
 }
 
-class _EpisodesScreenState extends State<EpisodesScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
-  late Future<Show?> _future;
+class _EpisodesScreenState extends ConsumerState<EpisodesScreen> {
   late int _activeSeason = widget.season;
   final Map<String, bool> _watchedOverrides = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _repository.getShow(widget.showId);
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _repository.getShow(widget.showId);
-    });
-  }
 
   Season _seasonFor(Show show) {
     for (final season in show.episodeData) {
@@ -88,36 +71,51 @@ class _EpisodesScreenState extends State<EpisodesScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);
+    final showId = int.tryParse(widget.showId);
     return Scaffold(
       backgroundColor: palette.bg,
-      body: FutureBuilder<Show?>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return ShowsStatus(
-              icon: Icons.cloud_off_outlined,
-              title: 'Something went wrong',
-              message:
-                  "We couldn't load this show. Check your connection and try again.",
-              actionLabel: 'Try again',
-              onAction: _reload,
-            );
-          }
-          final show = snapshot.data;
-          if (show == null) {
-            return ShowsStatus(
+      body: showId == null
+          ? ShowsStatus(
               icon: Icons.live_tv_outlined,
               title: 'Show not found',
               message:
                   'This show could not be found. It may have been removed.',
-            );
-          }
-          return _buildContent(show);
-        },
+            )
+          : _buildBody(showId),
+    );
+  }
+
+  Widget _buildBody(int showId) {
+    final detail = ref.watch(
+      showDetailForActiveSeasonProvider(
+        (showId: showId, seasonNumber: _activeSeason),
       ),
+    );
+    return detail.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => ShowsStatus(
+        icon: Icons.cloud_off_outlined,
+        title: 'Something went wrong',
+        message:
+            "We couldn't load this show. Check your connection and try again.",
+        actionLabel: 'Try again',
+        onAction: () => ref.invalidate(
+          showDetailForActiveSeasonProvider(
+            (showId: showId, seasonNumber: _activeSeason),
+          ),
+        ),
+      ),
+      data: (data) {
+        if (data == null) {
+          return ShowsStatus(
+            icon: Icons.live_tv_outlined,
+            title: 'Show not found',
+            message:
+                'This show could not be found. It may have been removed.',
+          );
+        }
+        return _buildContent(data.show);
+      },
     );
   }
 

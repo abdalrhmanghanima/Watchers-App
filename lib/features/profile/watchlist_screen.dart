@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/movie.dart';
 import '../../data/models/show.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../data/providers/content_repository_provider.dart';
 import '../../shared/widgets/watcher_status_bar.dart';
 import '../movies/widgets/movie_grid.dart';
 import 'widgets/profile_empty_state.dart';
@@ -13,27 +13,28 @@ import 'widgets/profile_page_header.dart';
 import 'widgets/profile_tabs.dart';
 import 'widgets/show_grid.dart';
 
-class WatchlistScreen extends StatefulWidget {
-  const WatchlistScreen({super.key, this.repository});
-
-  final ContentRepository? repository;
+class WatchlistScreen extends ConsumerStatefulWidget {
+  const WatchlistScreen({super.key});
 
   @override
-  State<WatchlistScreen> createState() => _WatchlistScreenState();
+  ConsumerState<WatchlistScreen> createState() => _WatchlistScreenState();
 }
 
-class _WatchlistScreenState extends State<WatchlistScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
+class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
   int _activeTab = 0;
   late Future<(List<Movie>, List<Show>)> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _repository.getMovies().then(
-      (movies) => _repository.getShows().then((shows) => (movies, shows)),
-    );
+    _future = _load();
+  }
+
+  Future<(List<Movie>, List<Show>)> _load() async {
+    final repository = ref.read(contentRepositoryProvider);
+    final movies = await repository.getMovies();
+    final shows = await repository.getShows();
+    return (movies, shows);
   }
 
   @override

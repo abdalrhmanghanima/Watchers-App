@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:watchers/app/watchers_app.dart';
+import 'package:watchers/data/providers/content_repository_provider.dart';
 import 'package:watchers/features/auth/domain/entities/auth_user.dart';
 import 'package:watchers/features/auth/domain/errors/auth_exception.dart';
 import 'package:watchers/features/auth/domain/repositories/auth_repository.dart';
@@ -14,7 +15,12 @@ import 'package:watchers/features/profile/domain/entities/user_profile.dart';
 import 'package:watchers/features/profile/domain/enums/profile_image_source.dart';
 import 'package:watchers/features/profile/domain/errors/profile_exception.dart';
 import 'package:watchers/features/profile/domain/repositories/profile_repository.dart';
+import 'package:watchers/features/tmdb/domain/repositories/tmdb_repository.dart';
+import 'package:watchers/features/tmdb/presentation/providers/tmdb_providers.dart';
 import 'package:watchers/shared/widgets/gradient_button.dart';
+
+import 'fake_content_repository.dart';
+import 'fake_tmdb_repository.dart';
 
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({
@@ -255,13 +261,20 @@ class FakeProfileRepository implements ProfileRepository {
   }
 }
 
-ProviderContainer createTestContainer({AuthUser? initialUser}) {
+ProviderContainer createTestContainer({
+  AuthUser? initialUser,
+  TmdbRepository? tmdbRepository,
+}) {
   final container = ProviderContainer(
     overrides: [
       authRepositoryProvider.overrideWithValue(
         FakeAuthRepository(initialUser: initialUser),
       ),
       profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+      tmdbRepositoryProvider.overrideWithValue(
+        tmdbRepository ?? FakeTmdbRepository(),
+      ),
+      contentRepositoryProvider.overrideWithValue(FakeContentRepository()),
     ],
   );
   addTearDown(container.dispose);
@@ -271,8 +284,12 @@ ProviderContainer createTestContainer({AuthUser? initialUser}) {
 Future<ProviderContainer> pumpApp(
   WidgetTester tester, {
   AuthUser? initialUser,
+  TmdbRepository? tmdbRepository,
 }) async {
-  final container = createTestContainer(initialUser: initialUser);
+  final container = createTestContainer(
+    initialUser: initialUser,
+    tmdbRepository: tmdbRepository,
+  );
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
@@ -281,6 +298,11 @@ Future<ProviderContainer> pumpApp(
   );
   await tester.pumpAndSettle();
   return container;
+}
+
+Widget testScope({required Widget child}) {
+  final container = createTestContainer();
+  return UncontrolledProviderScope(container: container, child: child);
 }
 
 Future<void> goToShell(WidgetTester tester, ProviderContainer container) async {

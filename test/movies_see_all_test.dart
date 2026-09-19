@@ -59,18 +59,24 @@ void main() {
     ) async {
       await _goToMovies(tester);
 
+      final mainScrollable = find.descendant(
+        of: find.byKey(const ValueKey('movies-content-list')),
+        matching: find.byType(Scrollable),
+      ).first;
+
       expect(find.text('Now Playing'), findsOneWidget);
       expect(find.text('Top Rated'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('Your Watchlist'),
+        find.text('Genres'),
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: mainScrollable,
       );
-      expect(find.text('Your Watchlist'), findsOneWidget);
+      expect(find.text('Genres'), findsOneWidget);
+      await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('All Movies'),
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: mainScrollable,
       );
       expect(find.text('All Movies'), findsOneWidget);
     });
@@ -80,11 +86,17 @@ void main() {
     ) async {
       await _goToMovies(tester);
 
-      expect(find.text('Meridian'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(MoviesHero),
+          matching: find.text('Meridian'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('2024 · 2h 8m'), findsOneWidget);
 
       final hero = tester.widget<MoviesHero>(find.byType(MoviesHero));
-      expect(hero.movie.id, 'meridian');
+      expect(hero.movie.id, '101');
       expect(hero.movie.title, 'Meridian');
     });
   });

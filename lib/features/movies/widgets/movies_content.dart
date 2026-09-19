@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/responsive/responsive.dart';
 import '../../../data/models/movie.dart';
+import '../../../shared/widgets/genre_chip.dart';
 import '../../../shared/widgets/poster_card.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../movie_list_screen.dart';
@@ -14,47 +15,43 @@ import 'movies_hero.dart';
 class MoviesContent extends StatelessWidget {
   const MoviesContent({
     super.key,
-    required this.movies,
+    required this.featured,
+    required this.nowPlaying,
+    required this.popular,
+    required this.topRated,
+    required this.genres,
     this.featuredInWatchlist,
     this.onToggleFeaturedWatchlist,
   });
 
-  final List<Movie> movies;
+  final Movie? featured;
+  final List<Movie> nowPlaying;
+  final List<Movie> popular;
+  final List<Movie> topRated;
+  final List<String> genres;
   final bool? featuredInWatchlist;
   final VoidCallback? onToggleFeaturedWatchlist;
 
   @override
   Widget build(BuildContext context) {
     final sizes = context.sizes;
-    final featured = movies.first;
-    final featuredPinned =
-        featuredInWatchlist ?? (featured.inWatchlist ?? false);
-    final nowPlaying = movies.length > 1
-        ? movies.sublist(1, movies.length > 5 ? 5 : movies.length)
-        : const <Movie>[];
-    final acclaimed = movies.length > 4
-        ? movies.sublist(4, movies.length > 8 ? 8 : movies.length)
-        : const <Movie>[];
-    final watchlist = movies
-        .where(
-          (movie) => movie.id == featured.id
-              ? featuredPinned
-              : movie.inWatchlist ?? false,
-        )
-        .toList();
+    final heroMovie = featured ?? (nowPlaying.isNotEmpty ? nowPlaying.first : null);
     void openMovie(Movie movie) => context.push('/movies/detail/${movie.id}');
     void openMovieList(String title, List<Movie> movies) => context.push(
       '/movies/list',
       extra: MovieListArgs(title: title, movies: movies),
     );
     return ListView(
+      key: const ValueKey('movies-content-list'),
+      primary: true,
       padding: const EdgeInsets.only(bottom: AppConstants.bottomNavOffset),
       children: [
-        MoviesHero(
-          movie: featured,
-          onViewDetails: () => openMovie(featured),
-          onToggleWatchlist: onToggleFeaturedWatchlist,
-        ),
+        if (heroMovie != null)
+          MoviesHero(
+            movie: heroMovie,
+            onViewDetails: () => openMovie(heroMovie),
+            onToggleWatchlist: onToggleFeaturedWatchlist,
+          ),
         SizedBox(height: sizes.blockGap),
         if (nowPlaying.isNotEmpty) ...[
           SectionHeader(
@@ -68,31 +65,52 @@ class MoviesContent extends StatelessWidget {
             onMovieTap: openMovie,
           ),
         ],
-        if (acclaimed.isNotEmpty) ...[
+        if (popular.isNotEmpty) ...[
           SizedBox(height: sizes.sectionGap),
           SectionHeader(
-            title: 'Top Rated',
+            title: 'Popular',
             action: 'See all',
-            onAction: () => openMovieList('Top Rated', acclaimed),
+            onAction: () => openMovieList('Popular', popular),
           ),
           MovieRow(
-            movies: acclaimed,
+            movies: popular,
             size: PosterCardSize.md,
             onMovieTap: openMovie,
           ),
         ],
-        if (watchlist.isNotEmpty) ...[
+        if (topRated.isNotEmpty) ...[
           SizedBox(height: sizes.sectionGap),
-          const SectionHeader(title: 'Your Watchlist'),
+          SectionHeader(
+            title: 'Top Rated',
+            action: 'See all',
+            onAction: () => openMovieList('Top Rated', topRated),
+          ),
           MovieRow(
-            movies: watchlist,
-            size: PosterCardSize.sm,
+            movies: topRated,
+            size: PosterCardSize.md,
             onMovieTap: openMovie,
+          ),
+        ],
+        if (genres.isNotEmpty) ...[
+          SizedBox(height: sizes.sectionGap),
+          const SectionHeader(title: 'Genres'),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: sizes.pagePadding),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final genre in genres) GenreChip(label: genre),
+              ],
+            ),
           ),
         ],
         SizedBox(height: sizes.sectionGap),
         const SectionHeader(title: 'All Movies'),
-        MovieGrid(movies: movies, onMovieTap: openMovie),
+        MovieGrid(
+          movies: [...nowPlaying, ...popular, ...topRated],
+          onMovieTap: openMovie,
+        ),
       ],
     );
   }

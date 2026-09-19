@@ -1,33 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/movie.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../data/providers/content_repository_provider.dart';
 import '../../shared/widgets/watcher_status_bar.dart';
 import '../movies/widgets/movie_grid.dart';
 import 'widgets/profile_empty_state.dart';
 import 'widgets/profile_page_header.dart';
 
-class WatchedMoviesScreen extends StatefulWidget {
-  const WatchedMoviesScreen({super.key, this.repository});
-
-  final ContentRepository? repository;
+class WatchedMoviesScreen extends ConsumerStatefulWidget {
+  const WatchedMoviesScreen({super.key});
 
   @override
-  State<WatchedMoviesScreen> createState() => _WatchedMoviesScreenState();
+  ConsumerState<WatchedMoviesScreen> createState() => _WatchedMoviesScreenState();
 }
 
-class _WatchedMoviesScreenState extends State<WatchedMoviesScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
+class _WatchedMoviesScreenState extends ConsumerState<WatchedMoviesScreen> {
   late Future<List<Movie>> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _repository.getMovies();
+    _future = _load();
+  }
+
+  Future<List<Movie>> _load() async {
+    final repository = ref.read(contentRepositoryProvider);
+    return repository.getMovies();
   }
 
   @override

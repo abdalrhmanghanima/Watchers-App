@@ -1,37 +1,27 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/show.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../data/providers/content_repository_provider.dart';
+import '../../features/tmdb/presentation/providers/show_ui_providers.dart';
 import '../../shared/widgets/watcher_status_bar.dart';
 import 'widgets/shows_content.dart';
 import 'widgets/shows_header.dart';
 import 'widgets/shows_status.dart';
 
-class ShowsScreen extends StatefulWidget {
-  const ShowsScreen({super.key, this.repository});
-
-  final ContentRepository? repository;
+class ShowsScreen extends ConsumerStatefulWidget {
+  const ShowsScreen({super.key});
 
   @override
-  State<ShowsScreen> createState() => _ShowsScreenState();
+  ConsumerState<ShowsScreen> createState() => _ShowsScreenState();
 }
 
-class _ShowsScreenState extends State<ShowsScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
-  late Future<List<Show>> _future;
+class _ShowsScreenState extends ConsumerState<ShowsScreen> {
   final Map<String, bool> _watchedOverrides = {};
   final Map<String, Timer> _watchedPending = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _repository.getShows();
-  }
 
   @override
   void dispose() {
@@ -39,12 +29,6 @@ class _ShowsScreenState extends State<ShowsScreen> {
       timer.cancel();
     }
     super.dispose();
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _repository.getShows();
-    });
   }
 
   void _applyWatched(String key) {
@@ -86,6 +70,11 @@ class _ShowsScreenState extends State<ShowsScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);
+    final userShowsAsync = ref.watch(userShowsProvider);
+    final popular =
+        ref.watch(showsPopularProviderAdapter).value ?? const <Show>[];
+    final airingToday =
+        ref.watch(showsAiringTodayProviderAdapter).value ?? const <Show>[];
     return Scaffold(
       backgroundColor: palette.bg,
       body: SafeArea(
@@ -95,39 +84,25 @@ class _ShowsScreenState extends State<ShowsScreen> {
             const WatcherStatusBar(),
             const ShowsHeader(),
             Expanded(
-              child: FutureBuilder<List<Show>>(
-                future: _future,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return ShowsStatus(
-                      icon: Icons.cloud_off_outlined,
-                      title: 'Something went wrong',
-                      message:
-                          "We couldn't load shows. Check your connection and try again.",
-                      actionLabel: 'Try again',
-                      onAction: _reload,
-                    );
-                  }
-                  final shows = snapshot.data ?? const <Show>[];
-                  if (shows.isEmpty) {
-                    return ShowsStatus(
-                      icon: Icons.live_tv_outlined,
-                      title: 'No shows yet',
-                      message:
-                          'There are no shows to explore right now. Check back soon.',
-                    );
-                  }
-                  return ShowsContent(
-                    shows: shows,
-                    watchedOverrides: _watchedOverrides,
-                    pendingWatched: _watchedPending.keys.toSet(),
-                    onToggleWatched: _toggleWatched,
-                    onClearWatched: _clearWatched,
-                  );
-                },
+              child: userShowsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => ShowsStatus(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'Something went wrong',
+                  message:
+                      "We couldn't load shows. Check your connection and try again.",
+                  actionLabel: 'Try again',
+                  onAction: () => ref.invalidate(userShowsProvider),
+                ),
+                data: (shows) => ShowsContent(
+                  shows: shows,
+                  popularShows: popular,
+                  airingTodayShows: airingToday,
+                  watchedOverrides: _watchedOverrides,
+                  pendingWatched: _watchedPending.keys.toSet(),
+                  onToggleWatched: _toggleWatched,
+                  onClearWatched: _clearWatched,
+                ),
               ),
             ),
           ],

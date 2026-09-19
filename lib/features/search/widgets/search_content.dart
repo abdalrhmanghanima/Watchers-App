@@ -9,10 +9,20 @@ import '../../../data/models/search_result.dart';
 import 'search_result_row.dart';
 
 class SearchContent extends StatelessWidget {
-  const SearchContent({super.key, required this.query, required this.results});
+  const SearchContent({
+    super.key,
+    required this.query,
+    required this.results,
+    this.hasMore = false,
+    this.isLoadingMore = false,
+    this.onLoadMore,
+  });
 
   final String query;
   final List<SearchResult> results;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final VoidCallback? onLoadMore;
 
   void _openResult(BuildContext context, SearchResult result) {
     if (result.type == ContentType.movie) {
@@ -26,34 +36,58 @@ class SearchContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);
     final suffix = results.length == 1 ? '' : 's';
-    return ListView(
-      padding: const EdgeInsets.only(bottom: AppConstants.bottomNavOffset),
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: context.sizes.pagePadding),
-          child: Text(
-            '${results.length} result$suffix for "$query"',
-            style: AppTextStyles.caption.copyWith(color: palette.textSec),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        final metrics = notification.metrics;
+        if (metrics.axis == Axis.vertical &&
+            metrics.maxScrollExtent > 0 &&
+            metrics.pixels >= metrics.maxScrollExtent - 300 &&
+            hasMore &&
+            !isLoadingMore) {
+          onLoadMore?.call();
+        }
+        return false;
+      },
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: AppConstants.bottomNavOffset),
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.sizes.pagePadding),
+            child: Text(
+              '${results.length} result$suffix for "$query"',
+              style: AppTextStyles.caption.copyWith(color: palette.textSec),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: context.sizes.pagePadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final result in results)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: SearchResultRow(
-                    result: result,
-                    onTap: () => _openResult(context, result),
+          const SizedBox(height: 12),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.sizes.pagePadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final result in results)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: SearchResultRow(
+                      result: result,
+                      onTap: () => _openResult(context, result),
+                    ),
                   ),
-                ),
-            ],
+                if (isLoadingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -22,6 +22,7 @@ import '../../features/search/search_screen.dart';
 import '../../features/shows/episode_detail/episode_detail_screen.dart';
 import '../../features/shows/episodes_screen.dart';
 import '../../features/shows/show_detail_screen.dart';
+import '../../features/shows/show_list_screen.dart';
 import '../../features/shows/shows_screen.dart';
 import '../../features/splash/splash_screen.dart';
 
@@ -78,6 +79,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/shows',
                 builder: (context, state) => const ShowsScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'list',
+                    builder: (context, state) {
+                      final args = state.extra as ShowListArgs;
+                      return ShowListScreen(
+                        title: args.title,
+                        shows: args.shows,
+                      );
+                    },
+                  ),
                   GoRoute(
                     path: 'detail/:id',
                     builder: (context, state) =>

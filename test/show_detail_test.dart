@@ -49,7 +49,7 @@ void main() {
   ) async {
     final container = await _goToShell(tester);
 
-    container.read(routerProvider).go('/shows/detail/the-agency');
+    container.read(routerProvider).go('/shows/detail/201');
     await tester.pumpAndSettle();
 
     expect(find.text('4/6 episodes'), findsOneWidget);
@@ -81,7 +81,7 @@ void main() {
   testWidgets('Show Details has no Comments section', (tester) async {
     final container = await _goToShell(tester);
 
-    container.read(routerProvider).go('/shows/detail/the-agency');
+    container.read(routerProvider).go('/shows/detail/201');
     await tester.pumpAndSettle();
 
     expect(find.text('Comments'), findsNothing);

@@ -6,6 +6,8 @@ import 'package:watchers/features/shows/shows_screen.dart';
 import 'package:watchers/features/shows/widgets/episode_list_item.dart';
 import 'package:watchers/shared/widgets/poster_card.dart';
 
+import 'helpers/auth_test_harness.dart';
+
 void main() {
   Widget wrap(Widget child) => MaterialApp(theme: AppTheme.dark(), home: child);
 
@@ -13,7 +15,7 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(wrap(const ShowsScreen()));
+    await tester.pumpWidget(testScope(child: wrap(const ShowsScreen())));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }
@@ -22,6 +24,38 @@ void main() {
     await pumpShows(tester);
 
     expect(find.text('Continue Watching'), findsNothing);
+  });
+
+  testWidgets('Popular Shows catalog from TMDB reaches the UI', (
+    tester,
+  ) async {
+    await pumpShows(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Popular Shows', skipOffstage: false), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(PosterCard, skipOffstage: false),
+        matching: find.text('The Agency', skipOffstage: false),
+      ),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('Airing Today catalog from TMDB reaches the UI', (
+    tester,
+  ) async {
+    await pumpShows(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Airing Today', skipOffstage: false), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(PosterCard, skipOffstage: false),
+        matching: find.text('Cascade Effect', skipOffstage: false),
+      ),
+      findsWidgets,
+    );
   });
 
   testWidgets('Episodes section exists', (tester) async {
@@ -105,10 +139,10 @@ void main() {
 
       expect(find.text('Red Folder'), findsOneWidget);
       final row = find.byKey(
-        const ValueKey('episode-list-item-the-agency-1-5'),
+        const ValueKey('episode-list-item-201-1-5'),
       );
       await tester.tap(
-        find.byKey(const ValueKey('shows-toggle-the-agency-1-5')),
+        find.byKey(const ValueKey('shows-toggle-201-1-5')),
       );
       await tester.pump();
 
@@ -131,7 +165,7 @@ void main() {
   ) async {
     await pumpShows(tester);
 
-    await tester.tap(find.byKey(const ValueKey('shows-toggle-the-agency-1-5')));
+    await tester.tap(find.byKey(const ValueKey('shows-toggle-201-1-5')));
     await tester.pump();
 
     expect(find.text('Red Folder'), findsOneWidget);
@@ -148,8 +182,8 @@ void main() {
   ) async {
     await pumpShows(tester);
 
-    final toggle = find.byKey(const ValueKey('shows-toggle-the-agency-1-5'));
-    final row = find.byKey(const ValueKey('episode-list-item-the-agency-1-5'));
+    final toggle = find.byKey(const ValueKey('shows-toggle-201-1-5'));
+    final row = find.byKey(const ValueKey('episode-list-item-201-1-5'));
     await tester.tap(toggle);
     await tester.pump();
 
@@ -179,7 +213,7 @@ void main() {
 
     expect(find.text('The Informant'), findsOneWidget);
     final toggle = find.byKey(
-      const ValueKey('shows-toggle-night-protocol-1-3'),
+      const ValueKey('shows-toggle-202-1-3'),
     );
     await tester.ensureVisible(toggle);
     await tester.tap(toggle);

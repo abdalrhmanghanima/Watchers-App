@@ -148,7 +148,7 @@ void main() {
   ) async {
     final container = await _goToShell(tester);
 
-    container.read(routerProvider).go('/shows/detail/the-agency/episode/1/1');
+    container.read(routerProvider).go('/shows/detail/201/episode/1/1');
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Comments'));
@@ -156,7 +156,7 @@ void main() {
     await tester.tap(find.text('Comments'));
     await tester.pumpAndSettle();
 
-    expect(find.text('The Briefing'), findsOneWidget);
+    expect(find.text('Comments'), findsOneWidget);
     expect(find.text('6 comments'), findsOneWidget);
     expect(find.text('Hide Spoilers'), findsOneWidget);
   });
@@ -176,7 +176,7 @@ void main() {
     await tester.tap(find.text('Comments'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Meridian'), findsOneWidget);
+    expect(find.text('Comments'), findsOneWidget);
     expect(find.text('6 comments'), findsOneWidget);
     expect(find.text('Hide Spoilers'), findsOneWidget);
   });

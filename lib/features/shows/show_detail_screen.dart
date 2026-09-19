@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/season.dart';
 import '../../data/models/show.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../features/tmdb/presentation/providers/show_detail_ui_providers.dart';
 import '../../shared/widgets/genre_chip.dart';
 import 'widgets/show_detail_about.dart';
 import 'widgets/show_detail_actions.dart';
@@ -16,34 +16,18 @@ import 'widgets/show_detail_hero.dart';
 import 'widgets/show_detail_season_selector.dart';
 import 'widgets/shows_status.dart';
 
-class ShowDetailScreen extends StatefulWidget {
-  const ShowDetailScreen({super.key, required this.showId, this.repository});
+class ShowDetailScreen extends ConsumerStatefulWidget {
+  const ShowDetailScreen({super.key, required this.showId});
 
   final String showId;
-  final ContentRepository? repository;
 
   @override
-  State<ShowDetailScreen> createState() => _ShowDetailScreenState();
+  ConsumerState<ShowDetailScreen> createState() => _ShowDetailScreenState();
 }
 
-class _ShowDetailScreenState extends State<ShowDetailScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
-  late Future<Show?> _future;
+class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   bool? _inWatchlist;
   int _activeSeason = 1;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _repository.getShow(widget.showId);
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _repository.getShow(widget.showId);
-    });
-  }
 
   void _toggleWatchlist() {
     setState(() {
@@ -54,40 +38,56 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);
+    final showId = int.tryParse(widget.showId);
     return Scaffold(
       backgroundColor: palette.bg,
-      body: FutureBuilder<Show?>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return ShowsStatus(
-              icon: Icons.cloud_off_outlined,
-              title: 'Something went wrong',
-              message:
-                  "We couldn't load this show. Check your connection and try again.",
-              actionLabel: 'Try again',
-              onAction: _reload,
-            );
-          }
-          final show = snapshot.data;
-          if (show == null) {
-            return ShowsStatus(
+      body: showId == null
+          ? ShowsStatus(
               icon: Icons.live_tv_outlined,
               title: 'Show not found',
               message:
                   'This show could not be found. It may have been removed.',
-            );
-          }
-          return _buildContent(show);
-        },
-      ),
+            )
+          : _buildBody(showId),
     );
   }
 
-  Widget _buildContent(Show show) {
+  Widget _buildBody(int showId) {
+    final data = ref.watch(
+      showDetailForActiveSeasonProvider(
+        (showId: showId, seasonNumber: _activeSeason),
+      ),
+    );
+    return data.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => ShowsStatus(
+        icon: Icons.cloud_off_outlined,
+        title: 'Something went wrong',
+        message:
+            "We couldn't load this show. Check your connection and try again.",
+        actionLabel: 'Try again',
+        onAction: () => ref.invalidate(
+          showDetailForActiveSeasonProvider(
+            (showId: showId, seasonNumber: _activeSeason),
+          ),
+        ),
+      ),
+      data: (detail) {
+        if (detail == null) {
+          return ShowsStatus(
+            icon: Icons.live_tv_outlined,
+            title: 'Show not found',
+            message:
+                'This show could not be found. It may have been removed.',
+          );
+        }
+        return _buildContent(detail);
+      },
+    );
+  }
+
+  Widget _buildContent(ShowDetailForScreen detail) {
+    final show = detail.show;
     final inWatchlist = _inWatchlist ?? (show.inWatchlist ?? false);
     final season = _seasonFor(show);
     final sizes = context.sizes;
@@ -108,7 +108,7 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final genre in show.genres) GenreChip(label: genre),
+                  for (final genre in detail.genres) GenreChip(label: genre),
                 ],
               ),
               SizedBox(height: sizes.blockGap),
@@ -121,24 +121,27 @@ class _ShowDetailScreenState extends State<ShowDetailScreen> {
               ),
               SizedBox(height: sizes.sectionGap),
               ShowDetailAbout(synopsis: show.synopsis),
-              if (season != null) ...[
+              if (show.episodeData.isNotEmpty) ...[
                 SizedBox(height: sizes.sectionGap),
                 ShowDetailSeasonSelector(
                   seasons: show.episodeData,
-                  activeSeason: season.number,
+                  activeSeason: season?.number ?? _activeSeason,
                   onSelect: (number) {
                     setState(() => _activeSeason = number);
                   },
-                  onAllEpisodes: () => _openEpisodes(show, season),
+                  onAllEpisodes: season == null
+                      ? null
+                      : () => _openEpisodes(show, season),
                 ),
                 SizedBox(height: sizes.sectionGap),
-                ShowDetailEpisodePreview(
-                  season: season,
-                  onMoreEpisodes: () => _openEpisodes(show, season),
-                ),
+                if (season != null)
+                  ShowDetailEpisodePreview(
+                    season: season,
+                    onMoreEpisodes: () => _openEpisodes(show, season),
+                  ),
                 SizedBox(height: sizes.sectionGap),
               ],
-              ShowDetailCast(cast: show.cast),
+              ShowDetailCast(cast: detail.cast),
             ],
           ),
         ),

@@ -1,12 +1,21 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:watchers/features/tmdb/domain/entities/paginated_result.dart';
+import 'package:watchers/features/tmdb/domain/entities/tmdb_movie.dart';
+import 'package:watchers/features/tmdb/domain/errors/tmdb_exception.dart';
+import 'package:watchers/features/tmdb/domain/repositories/tmdb_repository.dart';
 import 'package:watchers/shared/navigation/app_router.dart';
 
 import 'helpers/auth_test_harness.dart';
+import 'helpers/fake_tmdb_repository.dart';
 
-Future<ProviderContainer> _goToShell(WidgetTester tester) async {
-  final container = await pumpApp(tester);
+Future<ProviderContainer> _goToShell(
+  WidgetTester tester, {
+  TmdbRepository? repo,
+}) async {
+  final container = await pumpApp(tester, tmdbRepository: repo);
   await goToShell(tester, container);
   return container;
 }
@@ -63,4 +72,86 @@ void main() {
 
     expect(find.text('Movie not found'), findsOneWidget);
   });
+
+  testWidgets('movie detail requests similar movies from the dedicated endpoint', (
+    WidgetTester tester,
+  ) async {
+    final repo = FakeTmdbRepository();
+    final container = await _goToShell(tester, repo: repo);
+
+    container.read(routerProvider).go('/movies/detail/108');
+    await tester.pumpAndSettle();
+
+    expect(repo.similarMovieRequests, contains(108));
+  });
+
+  testWidgets('renders similar movies from the dedicated endpoint results', (
+    WidgetTester tester,
+  ) async {
+    final container = await _goToShell(tester);
+
+    container.read(routerProvider).go('/movies/detail/108');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Similar Movies'), findsOneWidget);
+
+    await tester.dragUntilVisible(
+      find.text('Meridian'),
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Meridian'), findsOneWidget);
+    expect(find.text('The Forgotten Shore'), findsOneWidget);
+  });
+
+  testWidgets('hides similar movies when the endpoint returns nothing', (
+    WidgetTester tester,
+  ) async {
+    final container = await _goToShell(tester, repo: _EmptySimilarRepository());
+
+    container.read(routerProvider).go('/movies/detail/108');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aether'), findsOneWidget);
+    expect(find.text('Similar Movies'), findsNothing);
+  });
+
+  testWidgets('shows the error state when the similar endpoint fails', (
+    WidgetTester tester,
+  ) async {
+    final container = await _goToShell(tester, repo: _FailingSimilarRepository());
+
+    container.read(routerProvider).go('/movies/detail/108');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Something went wrong'), findsOneWidget);
+  });
+}
+
+class _EmptySimilarRepository extends FakeTmdbRepository {
+  @override
+  Future<PaginatedResult<TmdbMovie>> getSimilarMovies(
+    int movieId, {
+    int page = 1,
+  }) async {
+    similarMovieRequests.add(movieId);
+    return PaginatedResult(
+      items: const <TmdbMovie>[],
+      page: page,
+      totalPages: 0,
+      totalResults: 0,
+    );
+  }
+}
+
+class _FailingSimilarRepository extends FakeTmdbRepository {
+  @override
+  Future<PaginatedResult<TmdbMovie>> getSimilarMovies(
+    int movieId, {
+    int page = 1,
+  }) async {
+    throw const TmdbException.network();
+  }
 }

@@ -3,14 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:watchers/core/theme/app_theme.dart';
-import 'package:watchers/data/sources/mock_content_repository.dart';
 import 'package:watchers/features/shows/episode_detail/episode_detail_screen.dart';
 import 'package:watchers/features/shows/episode_detail/widgets/episode_detail_hero.dart';
 import 'package:watchers/features/shows/episode_detail/widgets/episode_navigation_row.dart';
 import 'package:watchers/features/shows/episode_detail/widgets/episode_show_bar.dart';
+import 'package:watchers/features/tmdb/domain/entities/tmdb_episode.dart';
+import 'package:watchers/features/tmdb/domain/errors/tmdb_exception.dart';
+import 'package:watchers/features/tmdb/domain/repositories/tmdb_repository.dart';
 import 'package:watchers/shared/navigation/app_router.dart';
 
 import 'helpers/auth_test_harness.dart';
+import 'helpers/fake_tmdb_repository.dart';
 
 Widget _wrap(Widget child) => MaterialApp(theme: AppTheme.dark(), home: child);
 
@@ -18,17 +21,21 @@ Future<void> _pump(
   WidgetTester tester, {
   int season = 1,
   int episode = 1,
+  TmdbRepository? tmdbRepository,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
+  final container = createTestContainer(tmdbRepository: tmdbRepository);
   await tester.pumpWidget(
-    _wrap(
-      EpisodeDetailScreen(
-        showId: 'the-agency',
-        season: season,
-        episode: episode,
-        repository: MockContentRepository(),
+    UncontrolledProviderScope(
+      container: container,
+      child: _wrap(
+        EpisodeDetailScreen(
+          showId: '201',
+          season: season,
+          episode: episode,
+        ),
       ),
     ),
   );
@@ -229,7 +236,7 @@ void main() {
   ) async {
     final container = await _goToShell(tester);
 
-    container.read(routerProvider).go('/shows/detail/the-agency');
+    container.read(routerProvider).go('/shows/detail/201');
     await tester.pumpAndSettle();
 
     expect(find.text('About'), findsOneWidget);
@@ -349,4 +356,112 @@ void main() {
     expect(find.text('The Asset'), findsOneWidget);
     expect(find.text('Season 3 • Episode 2'), findsOneWidget);
   });
+
+  testWidgets('requests dedicated TMDB episode details with the right ids', (
+    tester,
+  ) async {
+    final repo = FakeTmdbRepository();
+    await _pump(tester, tmdbRepository: repo);
+
+    expect(
+      repo.episodeDetailsRequests,
+      contains((showId: 201, seasonNumber: 1, episodeNumber: 1)),
+    );
+  });
+
+  testWidgets('renders data from the dedicated episode details endpoint', (
+    tester,
+  ) async {
+    await _pump(tester, tmdbRepository: _DistinctEpisodeRepository());
+
+    expect(find.text('The Briefing (Extended)'), findsOneWidget);
+    expect(find.text('74 min'), findsOneWidget);
+    expect(find.text('A dedicated overview.'), findsOneWidget);
+  });
+
+  testWidgets('falls back to list data when dedicated episode details fail', (
+    tester,
+  ) async {
+    await _pump(tester, tmdbRepository: _FailingEpisodeRepository());
+
+    expect(find.text('The Briefing'), findsOneWidget);
+    expect(find.text('52 min'), findsOneWidget);
+    expect(find.text('Something went wrong'), findsNothing);
+  });
+
+  testWidgets(
+    'falls back to list data when dedicated episode details are unavailable',
+    (tester) async {
+      await _pump(tester, tmdbRepository: _NullEpisodeRepository());
+
+      expect(find.text('The Briefing'), findsOneWidget);
+      expect(find.text('52 min'), findsOneWidget);
+    },
+  );
+
+  testWidgets('watched state is preserved alongside dedicated episode details',
+      (tester) async {
+    await _pump(tester, episode: 1, tmdbRepository: _DistinctEpisodeRepository());
+
+    expect(find.text('Watched'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not watched'), findsOneWidget);
+  });
+}
+
+class _DistinctEpisodeRepository extends FakeTmdbRepository {
+  @override
+  Future<TmdbEpisode?> getEpisodeDetails(
+    int showId,
+    int seasonNumber,
+    int episodeNumber,
+  ) async {
+    episodeDetailsRequests.add(
+      (
+        showId: showId,
+        seasonNumber: seasonNumber,
+        episodeNumber: episodeNumber,
+      ),
+    );
+    if (showId == 201 && seasonNumber == 1 && episodeNumber == 1) {
+      return TmdbEpisode(
+        id: 1011,
+        seasonNumber: 1,
+        episodeNumber: 1,
+        name: 'The Briefing (Extended)',
+        overview: 'A dedicated overview.',
+        stillUrl: 'https://example.com/still-1011-ext.jpg',
+        airDate: DateTime(2022, 3, 10),
+        runtimeMinutes: 74,
+        rating: 8.7,
+        voteCount: 45,
+      );
+    }
+    return super.getEpisodeDetails(showId, seasonNumber, episodeNumber);
+  }
+}
+
+class _FailingEpisodeRepository extends FakeTmdbRepository {
+  @override
+  Future<TmdbEpisode?> getEpisodeDetails(
+    int showId,
+    int seasonNumber,
+    int episodeNumber,
+  ) async {
+    throw const TmdbException.network();
+  }
+}
+
+class _NullEpisodeRepository extends FakeTmdbRepository {
+  @override
+  Future<TmdbEpisode?> getEpisodeDetails(
+    int showId,
+    int seasonNumber,
+    int episodeNumber,
+  ) async {
+    return null;
+  }
 }

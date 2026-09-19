@@ -1,38 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../data/models/movie.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../features/tmdb/presentation/providers/movie_ui_providers.dart';
 import 'widgets/movies_content.dart';
 import 'widgets/movies_status.dart';
 
-class MoviesScreen extends StatefulWidget {
-  const MoviesScreen({super.key, this.repository});
-
-  final ContentRepository? repository;
+class MoviesScreen extends ConsumerStatefulWidget {
+  const MoviesScreen({super.key});
 
   @override
-  State<MoviesScreen> createState() => _MoviesScreenState();
+  ConsumerState<MoviesScreen> createState() => _MoviesScreenState();
 }
 
-class _MoviesScreenState extends State<MoviesScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
-  late Future<List<Movie>> _future;
+class _MoviesScreenState extends ConsumerState<MoviesScreen> {
   bool? _featuredInWatchlist;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _repository.getMovies();
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _repository.getMovies();
-    });
-  }
 
   void _toggleFeaturedWatchlist() {
     setState(() {
@@ -40,29 +22,32 @@ class _MoviesScreenState extends State<MoviesScreen> {
     });
   }
 
+  void _reload() {
+    ref.invalidate(moviesScreenProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = WatchersPalette.of(context);
+    final data = ref.watch(moviesScreenProvider);
     return Scaffold(
       backgroundColor: palette.bg,
-      body: FutureBuilder<List<Movie>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return MoviesStatus(
-              icon: Icons.cloud_off_outlined,
-              title: 'Something went wrong',
-              message:
-                  "We couldn't load movies. Check your connection and try again.",
-              actionLabel: 'Try again',
-              onAction: _reload,
-            );
-          }
-          final movies = snapshot.data ?? const <Movie>[];
-          if (movies.isEmpty) {
+      body: data.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => MoviesStatus(
+          icon: Icons.cloud_off_outlined,
+          title: 'Something went wrong',
+          message:
+              "We couldn't load movies. Check your connection and try again.",
+          actionLabel: 'Try again',
+          onAction: _reload,
+        ),
+        data: (value) {
+          final featured = value.featured;
+          if (featured == null &&
+              value.nowPlaying.isEmpty &&
+              value.popular.isEmpty &&
+              value.topRated.isEmpty) {
             return MoviesStatus(
               icon: Icons.local_movies_outlined,
               title: 'No movies yet',
@@ -71,7 +56,11 @@ class _MoviesScreenState extends State<MoviesScreen> {
             );
           }
           return MoviesContent(
-            movies: movies,
+            featured: featured,
+            nowPlaying: value.nowPlaying,
+            popular: value.popular,
+            topRated: value.topRated,
+            genres: value.genres,
             featuredInWatchlist: _featuredInWatchlist,
             onToggleFeaturedWatchlist: _toggleFeaturedWatchlist,
           );

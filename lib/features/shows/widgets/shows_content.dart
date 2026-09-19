@@ -7,7 +7,9 @@ import '../../../core/responsive/responsive.dart';
 import '../../../data/models/episode.dart';
 import '../../../data/models/season.dart';
 import '../../../data/models/show.dart';
+import '../../../shared/widgets/poster_card.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../show_list_screen.dart';
 import 'episode_list_item.dart';
 import 'watch_history_item.dart';
 
@@ -22,6 +24,8 @@ class ShowsContent extends StatefulWidget {
   const ShowsContent({
     super.key,
     required this.shows,
+    this.popularShows = const [],
+    this.airingTodayShows = const [],
     this.watchedOverrides = const {},
     this.pendingWatched = const <String>{},
     this.onToggleWatched,
@@ -29,6 +33,8 @@ class ShowsContent extends StatefulWidget {
   });
 
   final List<Show> shows;
+  final List<Show> popularShows;
+  final List<Show> airingTodayShows;
   final Map<String, bool> watchedOverrides;
   final Set<String> pendingWatched;
   final ValueChanged<String>? onToggleWatched;
@@ -85,6 +91,38 @@ class _ShowsContentState extends State<ShowsContent> {
     );
   }
 
+  void _openShow(Show show) {
+    context.push('/shows/detail/${show.id}');
+  }
+
+  void _openSeeAll(String title, List<Show> shows) {
+    context.push(
+      '/shows/list',
+      extra: ShowListArgs(title: title, shows: shows),
+    );
+  }
+
+  Widget _catalogRow(List<Show> shows) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: context.sizes.pagePadding),
+      child: Row(
+        children: [
+          for (var i = 0; i < shows.length; i++) ...[
+            if (i > 0) const SizedBox(width: AppConstants.itemGap),
+            PosterCard(
+              title: shows[i].title,
+              year: shows[i].year,
+              posterUrl: shows[i].posterUrl,
+              size: PosterCardSize.md,
+              onTap: () => _openShow(shows[i]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final watched = _watchedFor(
@@ -104,6 +142,25 @@ class _ShowsContentState extends State<ShowsContent> {
       scrollCacheExtent: const ScrollCacheExtent.pixels(10000),
       padding: const EdgeInsets.only(bottom: AppConstants.bottomNavOffset),
       children: [
+        if (widget.popularShows.isNotEmpty) ...[
+          SectionHeader(
+            title: 'Popular Shows',
+            action: 'See all',
+            onAction: () => _openSeeAll('Popular Shows', widget.popularShows),
+          ),
+          _catalogRow(widget.popularShows),
+          SizedBox(height: context.sizes.sectionGap),
+        ],
+        if (widget.airingTodayShows.isNotEmpty) ...[
+          SectionHeader(
+            title: 'Airing Today',
+            action: 'See all',
+            onAction: () =>
+                _openSeeAll('Airing Today', widget.airingTodayShows),
+          ),
+          _catalogRow(widget.airingTodayShows),
+          SizedBox(height: context.sizes.sectionGap),
+        ],
         if (watched.isNotEmpty) ...[
           const SectionHeader(title: 'Watch History'),
           for (final entry in watched)

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:watchers/core/theme/app_theme.dart';
-import 'package:watchers/data/sources/mock_content_repository.dart';
 import 'package:watchers/features/shows/episodes_screen.dart';
 import 'package:watchers/shared/navigation/app_router.dart';
 
@@ -22,13 +21,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      _wrap(
-        EpisodesScreen(
-          showId: 'the-agency',
-          season: 1,
-          repository: MockContentRepository(),
-        ),
-      ),
+      testScope(child: _wrap(EpisodesScreen(showId: '201', season: 1))),
     );
     await tester.pumpAndSettle();
 
@@ -47,13 +40,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      _wrap(
-        EpisodesScreen(
-          showId: 'the-agency',
-          season: 3,
-          repository: MockContentRepository(),
-        ),
-      ),
+      testScope(child: _wrap(EpisodesScreen(showId: '201', season: 3))),
     );
     await tester.pumpAndSettle();
 
@@ -66,13 +53,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      _wrap(
-        EpisodesScreen(
-          showId: 'the-agency',
-          season: 1,
-          repository: MockContentRepository(),
-        ),
-      ),
+      testScope(child: _wrap(EpisodesScreen(showId: '201', season: 1))),
     );
     await tester.pumpAndSettle();
 
@@ -93,13 +74,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      _wrap(
-        EpisodesScreen(
-          showId: 'the-agency',
-          season: 1,
-          repository: MockContentRepository(),
-        ),
-      ),
+      testScope(child: _wrap(EpisodesScreen(showId: '201', season: 1))),
     );
     await tester.pumpAndSettle();
 
@@ -116,13 +91,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      _wrap(
-        EpisodesScreen(
-          showId: 'the-agency',
-          season: 1,
-          repository: MockContentRepository(),
-        ),
-      ),
+      testScope(child: _wrap(EpisodesScreen(showId: '201', season: 1))),
     );
     await tester.pumpAndSettle();
 
@@ -137,13 +106,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      _wrap(
-        EpisodesScreen(
-          showId: 'unknown',
-          season: 1,
-          repository: MockContentRepository(),
-        ),
-      ),
+      testScope(child: _wrap(EpisodesScreen(showId: 'unknown', season: 1))),
     );
     await tester.pumpAndSettle();
 
@@ -155,7 +118,7 @@ void main() {
   ) async {
     final container = await _goToShell(tester);
 
-    container.read(routerProvider).go('/shows/detail/the-agency');
+    container.read(routerProvider).go('/shows/detail/201');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('View Episodes'));

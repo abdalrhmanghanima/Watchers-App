@@ -8,6 +8,8 @@ import 'package:watchers/features/shows/widgets/episode_list_item.dart';
 import 'package:watchers/features/shows/widgets/watch_history_item.dart';
 import 'package:watchers/shared/widgets/section_header.dart';
 
+import 'helpers/auth_test_harness.dart';
+
 void main() {
   Widget wrap(Widget child) => MaterialApp(theme: AppTheme.dark(), home: child);
 
@@ -15,7 +17,7 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(wrap(const ShowsScreen()));
+    await tester.pumpWidget(testScope(child: wrap(const ShowsScreen())));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }
@@ -63,7 +65,7 @@ void main() {
     await pumpShows(tester);
     await revealHistory(tester);
 
-    final row = find.byKey(const ValueKey('watch-history-item-the-agency-1-1'));
+    final row = find.byKey(const ValueKey('watch-history-item-201-1-1'));
     expect(
       find.descendant(of: row, matching: find.text('The Agency')),
       findsOneWidget,
@@ -84,7 +86,7 @@ void main() {
     await pumpShows(tester);
     await revealHistory(tester);
 
-    final row = find.byKey(const ValueKey('watch-history-item-the-agency-1-1'));
+    final row = find.byKey(const ValueKey('watch-history-item-201-1-1'));
     final check = find.descendant(of: row, matching: find.byIcon(Icons.check));
     expect(check, findsOneWidget);
     expect(tester.widget<Icon>(check).color, Colors.white);
@@ -103,14 +105,14 @@ void main() {
 
     expect(historyRows(), findsNWidgets(15));
 
-    await tester.tap(find.byKey(const ValueKey('shows-toggle-the-agency-1-5')));
+    await tester.tap(find.byKey(const ValueKey('shows-toggle-201-1-5')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 2100));
 
     expect(historyRows(), findsNWidgets(16));
     expect(
       find.byKey(
-        const ValueKey('watch-history-item-the-agency-1-5'),
+        const ValueKey('watch-history-item-201-1-5'),
         skipOffstage: false,
       ),
       findsOneWidget,
@@ -126,19 +128,19 @@ void main() {
       expect(historyRows(), findsNWidgets(15));
 
       await tester.tap(
-        find.byKey(const ValueKey('shows-toggle-the-agency-1-1')),
+        find.byKey(const ValueKey('shows-toggle-201-1-1')),
       );
       await tester.pump();
 
       expect(historyRows(), findsNWidgets(14));
       expect(
-        find.byKey(const ValueKey('watch-history-item-the-agency-1-1')),
+        find.byKey(const ValueKey('watch-history-item-201-1-1')),
         findsNothing,
       );
       expect(
         find.descendant(
           of: find.byKey(
-            const ValueKey('episode-list-item-the-agency-1-1'),
+            const ValueKey('episode-list-item-201-1-1'),
             skipOffstage: false,
           ),
           matching: find.text('The Briefing', skipOffstage: false),
@@ -201,11 +203,11 @@ void main() {
     await pumpShows(tester);
 
     final first = find.byKey(
-      const ValueKey('watch-history-item-the-agency-1-1'),
+      const ValueKey('watch-history-item-201-1-1'),
       skipOffstage: false,
     );
     final last = find.byKey(
-      const ValueKey('watch-history-item-meridian-falls-1-7'),
+      const ValueKey('watch-history-item-203-1-7'),
       skipOffstage: false,
     );
 

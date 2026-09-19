@@ -1,33 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/show.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../data/providers/content_repository_provider.dart';
 import '../../shared/widgets/watcher_status_bar.dart';
 import 'widgets/profile_empty_state.dart';
 import 'widgets/profile_page_header.dart';
 import 'widgets/show_grid.dart';
 
-class WatchedShowsScreen extends StatefulWidget {
-  const WatchedShowsScreen({super.key, this.repository});
-
-  final ContentRepository? repository;
+class WatchedShowsScreen extends ConsumerStatefulWidget {
+  const WatchedShowsScreen({super.key});
 
   @override
-  State<WatchedShowsScreen> createState() => _WatchedShowsScreenState();
+  ConsumerState<WatchedShowsScreen> createState() => _WatchedShowsScreenState();
 }
 
-class _WatchedShowsScreenState extends State<WatchedShowsScreen> {
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
+class _WatchedShowsScreenState extends ConsumerState<WatchedShowsScreen> {
   late Future<List<Show>> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _repository.getShows();
+    _future = _load();
+  }
+
+  Future<List<Show>> _load() async {
+    final repository = ref.read(contentRepositoryProvider);
+    return repository.getShows();
   }
 
   @override

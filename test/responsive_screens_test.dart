@@ -27,7 +27,7 @@ const _sizes = <(String, Size)>[
 void main() {
   Widget wrap(Widget child, {ProviderContainer? container}) {
     final app = MaterialApp(theme: AppTheme.dark(), home: child);
-    if (container == null) return ProviderScope(child: app);
+    if (container == null) return testScope(child: app);
     return UncontrolledProviderScope(container: container, child: app);
   }
 
@@ -61,14 +61,14 @@ void main() {
     ('ShowsScreen', const ShowsScreen(), 'Episodes', null),
     (
       'ShowDetailScreen',
-      const ShowDetailScreen(showId: 'the-agency'),
+      const ShowDetailScreen(showId: '201'),
       'About',
       null,
     ),
     ('MoviesScreen', const MoviesScreen(), 'Now Playing', null),
     (
       'MovieDetailScreen',
-      const MovieDetailScreen(movieId: 'meridian'),
+      const MovieDetailScreen(movieId: '101'),
       'Synopsis',
       null,
     ),
@@ -78,7 +78,7 @@ void main() {
     ('AuthScreen', const AuthScreen(), 'or continue with', null),
     (
       'EpisodesScreen',
-      const EpisodesScreen(showId: 'the-agency', season: 1),
+      const EpisodesScreen(showId: '201', season: 1),
       'Season progress',
       null,
     ),

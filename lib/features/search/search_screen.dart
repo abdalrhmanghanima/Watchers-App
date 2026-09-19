@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../data/models/search_result.dart';
-import '../../data/repositories/content_repository.dart';
-import '../../data/sources/mock_content_repository.dart';
+import '../../features/tmdb/presentation/providers/search_ui_providers.dart';
 import '../../shared/widgets/watcher_status_bar.dart';
 import 'widgets/browse_categories.dart';
 import 'widgets/search_content.dart';
@@ -14,16 +13,14 @@ import 'widgets/search_field.dart';
 import 'widgets/search_recent_list.dart';
 import 'widgets/search_status.dart';
 
-class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, this.repository});
-
-  final ContentRepository? repository;
+class SearchScreen extends ConsumerStatefulWidget {
+  const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class _SearchScreenState extends ConsumerState<SearchScreen> {
   static const List<String> _initialRecent = [
     'Meridian',
     'The Agency',
@@ -31,11 +28,8 @@ class _SearchScreenState extends State<SearchScreen> {
     'Night Protocol',
   ];
 
-  late final ContentRepository _repository =
-      widget.repository ?? MockContentRepository();
   final TextEditingController _controller = TextEditingController();
   final List<String> _recent = List.of(_initialRecent);
-  Future<List<SearchResult>>? _future;
   String _query = '';
 
   @override
@@ -47,9 +41,8 @@ class _SearchScreenState extends State<SearchScreen> {
   void _onQueryChanged(String value) {
     setState(() {
       _query = value;
-      final trimmed = value.trim();
-      _future = trimmed.isEmpty ? null : _repository.search(trimmed);
     });
+    ref.read(searchViewModelProvider.notifier).search(value);
   }
 
   void _applyQuery(String value) {
@@ -61,12 +54,12 @@ class _SearchScreenState extends State<SearchScreen> {
     _controller.clear();
     setState(() {
       _query = '';
-      _future = null;
     });
+    ref.read(searchViewModelProvider.notifier).search('');
   }
 
   void _retry() {
-    _onQueryChanged(_query);
+    ref.read(searchViewModelProvider.notifier).search(_query);
   }
 
   void _removeRecent(String item) {
@@ -137,35 +130,37 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
       );
     }
-    return FutureBuilder<List<SearchResult>>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return SearchStatus(
-            icon: Icons.cloud_off_outlined,
-            title: 'Something went wrong',
-            message:
-                "We couldn't search right now. Check your connection and try again.",
-            actionLabel: 'Try again',
-            onAction: _retry,
-          );
-        }
-        final results = snapshot.data ?? const <SearchResult>[];
-        if (results.isEmpty) {
-          return SearchStatus(
-            icon: Icons.search_off,
-            title: 'No results found',
-            message:
-                'Nothing matched "${_query.trim()}". Try a different search.',
-            actionLabel: 'Clear search',
-            onAction: _clearQuery,
-          );
-        }
-        return SearchContent(query: _query, results: results);
-      },
+    final viewModel = ref.watch(searchViewModelProvider);
+    if (viewModel.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (viewModel.hasError) {
+      return SearchStatus(
+        icon: Icons.cloud_off_outlined,
+        title: 'Something went wrong',
+        message:
+            "We couldn't search right now. Check your connection and try again.",
+        actionLabel: 'Try again',
+        onAction: _retry,
+      );
+    }
+    final results = viewModel.results;
+    if (results.isEmpty) {
+      return SearchStatus(
+        icon: Icons.search_off,
+        title: 'No results found',
+        message:
+            'Nothing matched "${_query.trim()}". Try a different search.',
+        actionLabel: 'Clear search',
+        onAction: _clearQuery,
+      );
+    }
+    return SearchContent(
+      query: _query,
+      results: results,
+      hasMore: viewModel.hasMore,
+      isLoadingMore: viewModel.isLoadingMore,
+      onLoadMore: () => ref.read(searchViewModelProvider.notifier).loadMore(),
     );
   }
 }
